@@ -1,0 +1,7 @@
+name: k8s
+description: A minimal K8s Pulumi program to configure my kubernetes clusters
+runtime: go
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: kubernetes-go
