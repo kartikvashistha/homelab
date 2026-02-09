@@ -1,8 +1,8 @@
 api:
   dashboard: true
 
-service:
-  type: NodePort
+# service:
+#   type: ClusterIP
 # tolerations:
 #   - key: "node-role.kubernetes.io/control-plane"
 #     operator: "Exists"
@@ -17,9 +17,9 @@ providers:
   kubernetesGateway:
      enabled: true
 
-gateway:
-  listeners:
-    namespacePolicy: ALL
+# gateway:
+#   listeners:
+#     namespacePolicy: ALL
 
 # Enable Observability
 logs:

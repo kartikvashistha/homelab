@@ -1,11 +1,7 @@
 package main
 
 import (
-	// appsv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apps/v1"
-	// corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
-	// helmv4 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v4"
-	// metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -44,8 +40,27 @@ func main() {
 			},
 		}
 
+		coredns := HelmChart{
+			ReleaseName: "coredns",
+			Chart:       "coredns",
+			Repo:        "https://coredns.github.io/helm",
+			Version:     "1.45.2",
+			Namespace:   "kube-system",
+			// ValuesFile: pulumi.AssetOrArchiveArray{
+			// 	pulumi.NewFileAsset("./helm-values/traefik.yaml"),
+			// },
+		}
+
+		metallb := HelmChart{
+			ReleaseName: "metallb",
+			Chart:       "metallb",
+			Repo:        "https://metallb.github.io/metallb",
+			Version:     "0.15.3",
+			Namespace:   "metallb-system",
+		}
+
 		var HelmReleaseChartList []HelmChart
-		HelmReleaseChartList = append(HelmReleaseChartList, cilium, traefik)
+		HelmReleaseChartList = append(HelmReleaseChartList, cilium, coredns, metallb, traefik)
 
 		for _, v := range HelmReleaseChartList {
 			_, err := helmv3.NewRelease(ctx, v.ReleaseName, &helmv3.ReleaseArgs{
