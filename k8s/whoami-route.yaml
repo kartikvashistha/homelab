@@ -7,8 +7,6 @@ spec:
   parentRefs:
     - name: traefik-gateway # Name of the Gateway that Traefik creates when you enable the Gateway API provider
   hostnames:
-    - "whoami.docker.localhost"
-    # - "velen.home.arpa"
     - "homelab.home.arpa"
   rules:
     - matches:
