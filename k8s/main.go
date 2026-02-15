@@ -29,6 +29,14 @@ func main() {
 			},
 		}
 
+		metallb := HelmChart{
+			ReleaseName: "metallb",
+			Chart:       "metallb",
+			Repo:        "https://metallb.github.io/metallb",
+			Version:     "0.15.3",
+			Namespace:   "metallb-system",
+		}
+
 		traefik := HelmChart{
 			ReleaseName: "traefik",
 			Chart:       "traefik",
@@ -41,22 +49,14 @@ func main() {
 		}
 
 		coredns := HelmChart{
-			ReleaseName: "coredns",
+			ReleaseName: "coredns-external",
 			Chart:       "coredns",
 			Repo:        "https://coredns.github.io/helm",
 			Version:     "1.45.2",
-			Namespace:   "kube-system",
-			// ValuesFile: pulumi.AssetOrArchiveArray{
-			// 	pulumi.NewFileAsset("./helm-values/traefik.yaml"),
-			// },
-		}
-
-		metallb := HelmChart{
-			ReleaseName: "metallb",
-			Chart:       "metallb",
-			Repo:        "https://metallb.github.io/metallb",
-			Version:     "0.15.3",
-			Namespace:   "metallb-system",
+			Namespace:   "coredns",
+			ValuesFile: pulumi.AssetOrArchiveArray{
+				pulumi.NewFileAsset("./helm-values/coredns.yaml"),
+			},
 		}
 
 		var HelmReleaseChartList []HelmChart
