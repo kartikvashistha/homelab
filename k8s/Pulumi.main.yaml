@@ -1,1 +1,27 @@
-{config: {'kubernetes:context': homelab}}
+config:
+  kubernetes:context: homelab
+
+  pulumi:tags:
+    pulumi:template: kubernetes-go
+
+  k8s:installCni: true
+
+  k8s:helmCharts:
+    - releaseName: metallb
+      chart: metallb
+      namespace: metallb-system
+      repo: "https://metallb.github.io/metallb"
+      valuesFile: ""
+      version: 0.15.3
+    - releaseName: traefik
+      chart: traefik
+      namespace: traefik
+      repo: "https://traefik.github.io/charts"
+      valuesFile: ./helm-values/traefik.yaml
+      version: 38.0.1
+    - releaseName: coredns-external
+      chart: coredns
+      namespace: coredns
+      repo: "https://coredns.github.io/helm"
+      valuesFile: ./helm-values/coredns.yaml
+      version: 1.45.2

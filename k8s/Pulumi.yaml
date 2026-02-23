@@ -5,3 +5,37 @@ config:
   pulumi:tags:
     value:
       pulumi:template: kubernetes-go
+  k8s:installCni:
+    value:
+      type: boolean
+      description: Option to install cillium cni helm chart
+      default: false
+  k8s:helmCharts:
+    value:
+      type: array
+      description: List of helm charts to install in a cluster
+      items:
+        releaseName:
+          type: string
+          description: Name of the helm chart to install
+          default: ""
+        chart:
+          type: string
+          description: Name of the helm chart to install
+          default: ""
+        repo:
+          type: string
+          description: Repository URL for the helm chart
+          default: ""
+        version:
+          type: string
+          description: Version of the helm chart to install
+          default: ""
+        namespace:
+          type: string
+          description: Namespace to install the helm chart in
+          default: ""
+        valuesFile:
+          type: string
+          description: Path to the values file for the helm chart
+          default: ""

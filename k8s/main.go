@@ -3,6 +3,7 @@ package main
 import (
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 type HelmChart struct {
@@ -11,56 +12,36 @@ type HelmChart struct {
 	ReleaseName string
 	Repo        string
 	Version     string
-	ValuesFile  pulumi.AssetOrArchiveArray
+	ValuesFile  string
 	Values      pulumi.Map
 }
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		cfg := config.New(ctx, "")
 
-		cilium := HelmChart{
-			ReleaseName: "cilium",
-			Chart:       "cilium",
-			Repo:        "https://helm.cilium.io",
-			Version:     "1.18.5",
-			Namespace:   "kube-system",
-			ValuesFile: pulumi.AssetOrArchiveArray{
-				pulumi.NewFileAsset("./helm-values/cilium.yaml"),
-			},
-		}
+		var cni bool
 
-		metallb := HelmChart{
-			ReleaseName: "metallb",
-			Chart:       "metallb",
-			Repo:        "https://metallb.github.io/metallb",
-			Version:     "0.15.3",
-			Namespace:   "metallb-system",
-		}
-
-		traefik := HelmChart{
-			ReleaseName: "traefik",
-			Chart:       "traefik",
-			Repo:        "https://traefik.github.io/charts",
-			Version:     "38.0.1",
-			Namespace:   "traefik",
-			ValuesFile: pulumi.AssetOrArchiveArray{
-				pulumi.NewFileAsset("./helm-values/traefik.yaml"),
-			},
-		}
-
-		coredns := HelmChart{
-			ReleaseName: "coredns-external",
-			Chart:       "coredns",
-			Repo:        "https://coredns.github.io/helm",
-			Version:     "1.45.2",
-			Namespace:   "coredns",
-			ValuesFile: pulumi.AssetOrArchiveArray{
-				pulumi.NewFileAsset("./helm-values/coredns.yaml"),
-			},
+		cfg.RequireObject("installCni", &cni)
+		if cni {
+			_, err := helmv3.NewRelease(ctx, "cilium", &helmv3.ReleaseArgs{
+				Chart: pulumi.String("cilium"),
+				RepositoryOpts: &helmv3.RepositoryOptsArgs{
+					Repo: pulumi.String("https://helm.cilium.io"),
+				},
+				Version:         pulumi.String("1.18.5"),
+				Name:            pulumi.String("cilium"),
+				Namespace:       pulumi.String("kube-system"),
+				CreateNamespace: pulumi.Bool(true),
+				ValueYamlFiles:  pulumi.AssetOrArchiveArray{pulumi.NewFileAsset("./helm-values/cilium.yaml")},
+			})
+			if err != nil {
+				return err
+			}
 		}
 
 		var HelmReleaseChartList []HelmChart
-		HelmReleaseChartList = append(HelmReleaseChartList, cilium, coredns, metallb, traefik)
+		cfg.RequireObject("helmCharts", &HelmReleaseChartList)
 
 		for _, v := range HelmReleaseChartList {
 			_, err := helmv3.NewRelease(ctx, v.ReleaseName, &helmv3.ReleaseArgs{
@@ -72,9 +53,8 @@ func main() {
 				Name:            pulumi.String(v.ReleaseName),
 				Namespace:       pulumi.String(v.Namespace),
 				CreateNamespace: pulumi.Bool(true),
-				ValueYamlFiles:  v.ValuesFile,
+				ValueYamlFiles:  pulumi.AssetOrArchiveArray{pulumi.NewFileAsset(v.ValuesFile)},
 			})
-
 			if err != nil {
 				return err
 			}
