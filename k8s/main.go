@@ -2,6 +2,7 @@ package main
 
 import (
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	yamlv2 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -16,12 +17,16 @@ type HelmChart struct {
 	Values      pulumi.Map
 }
 
+type Metallb struct {
+	Install     bool
+	AddressPool []string
+}
+
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
 
 		var cni bool
-
 		cfg.RequireObject("installCni", &cni)
 		if cni {
 			_, err := helmv3.NewRelease(ctx, "cilium", &helmv3.ReleaseArgs{
@@ -38,6 +43,46 @@ func main() {
 			if err != nil {
 				return err
 			}
+		}
+
+		var metallb Metallb
+		cfg.RequireObject("metallb", &metallb)
+		if metallb.Install {
+			_, err := yamlv2.NewConfigGroup(ctx, "metallbIpAddressPool", &yamlv2.ConfigGroupArgs{
+				Objs: pulumi.Array{
+					pulumi.Map{
+						"apiVersion": pulumi.String("metallb.io/v1beta1"),
+						"kind":       pulumi.String("IPAddressPool"),
+						"metadata": pulumi.Map{
+							"name":      pulumi.String("first-pool"),
+							"namespace": pulumi.String("metallb-system"),
+						},
+						"spec": pulumi.Map{
+							"addresses": pulumi.StringArrayInput(pulumi.ToStringArray(metallb.AddressPool)),
+						},
+					},
+				},
+			})
+			if err != nil {
+				return err
+			}
+
+			_, err = yamlv2.NewConfigGroup(ctx, "metallbL2Advertisement", &yamlv2.ConfigGroupArgs{
+				Objs: pulumi.Array{
+					pulumi.Map{
+						"apiVersion": pulumi.String("metallb.io/v1beta1"),
+						"kind":       pulumi.String("L2Advertisement"),
+						"metadata": pulumi.Map{
+							"name":      pulumi.String("advertisement"),
+							"namespace": pulumi.String("metallb-system"),
+						},
+					},
+				},
+			})
+			if err != nil {
+				return err
+			}
+
 		}
 
 		var HelmReleaseChartList []HelmChart
