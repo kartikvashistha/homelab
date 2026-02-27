@@ -9,7 +9,7 @@ config:
   k8s:metallb:
     install: true
     addressPool:
-      - 192.168.50.253-192.168.50.254
+      - 192.168.50.252-192.168.50.254
 
   k8s:installGatewayApiCrds: true
 
@@ -20,12 +20,11 @@ config:
       repo: "https://metallb.github.io/metallb"
       valuesFile: ""
       version: 0.15.3
-    - releaseName: traefik
-      chart: traefik
-      namespace: traefik
-      repo: "https://traefik.github.io/charts"
-      valuesFile: ./helm-values/traefik.yaml
-      version: 38.0.1
+    - releaseName: istio
+      chart: istiod
+      namespace: istio-system
+      repo: "https://istio-release.storage.googleapis.com/charts"
+      version: 1.29.0
     - releaseName: coredns-external
       chart: coredns
       namespace: coredns
