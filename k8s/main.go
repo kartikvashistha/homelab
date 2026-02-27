@@ -2,6 +2,7 @@ package main
 
 import (
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
+	kustomizev2 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/kustomize/v2"
 	yamlv2 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
@@ -82,7 +83,17 @@ func main() {
 			if err != nil {
 				return err
 			}
+		}
 
+		var installGatewayApiCrds bool
+		cfg.RequireObject("installGatewayApiCrds", &installGatewayApiCrds)
+		if installGatewayApiCrds {
+			_, err := kustomizev2.NewDirectory(ctx, "gatewayapicrds", &kustomizev2.DirectoryArgs{
+				Directory: pulumi.String("github.com/kubernetes-sigs/gateway-api/config/crd?ref=v1.4.0"),
+			})
+			if err != nil {
+				return err
+			}
 		}
 
 		var HelmReleaseChartList []HelmChart

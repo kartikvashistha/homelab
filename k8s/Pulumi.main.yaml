@@ -11,6 +11,8 @@ config:
     addressPool:
       - 192.168.50.253-192.168.50.254
 
+  k8s:installGatewayApiCrds: true
+
   k8s:helmCharts:
     - releaseName: metallb
       chart: metallb

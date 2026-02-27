@@ -23,6 +23,12 @@ config:
         type: array
         description: List of address pools to configure for metallb
 
+  k8s:installGatewayApiCrds:
+    value:
+      type: boolean
+      description: Option to install Gateway API CRDs
+      default: false
+
   k8s:helmCharts:
     value:
       type: array
