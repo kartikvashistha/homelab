@@ -9,7 +9,7 @@ config:
   k8s:metallb:
     install: true
     addressPool:
-      - 192.168.50.252-192.168.50.254
+      - 192.168.50.253-192.168.50.254
 
   k8s:installGatewayApiCrds: true
 
