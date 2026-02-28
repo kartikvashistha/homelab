@@ -14,12 +14,6 @@ config:
   k8s:installGatewayApiCrds: true
 
   k8s:helmCharts:
-    - releaseName: metallb
-      chart: metallb
-      namespace: metallb-system
-      repo: "https://metallb.github.io/metallb"
-      valuesFile: ""
-      version: 0.15.3
     - releaseName: istio
       chart: istiod
       namespace: istio-system

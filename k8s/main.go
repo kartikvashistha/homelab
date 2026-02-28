@@ -1,9 +1,11 @@
 package main
 
 import (
+	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
+	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	kustomizev2 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/kustomize/v2"
-	yamlv2 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml/v2"
+	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -49,37 +51,45 @@ func main() {
 		var metallb Metallb
 		cfg.RequireObject("metallb", &metallb)
 		if metallb.Install {
-			_, err := yamlv2.NewConfigGroup(ctx, "metallbIpAddressPool", &yamlv2.ConfigGroupArgs{
-				Objs: pulumi.Array{
-					pulumi.Map{
-						"apiVersion": pulumi.String("metallb.io/v1beta1"),
-						"kind":       pulumi.String("IPAddressPool"),
-						"metadata": pulumi.Map{
-							"name":      pulumi.String("first-pool"),
-							"namespace": pulumi.String("metallb-system"),
-						},
-						"spec": pulumi.Map{
-							"addresses": pulumi.StringArrayInput(pulumi.ToStringArray(metallb.AddressPool)),
-						},
-					},
+			metallbRelease, err := helmv3.NewRelease(ctx, "metallb", &helmv3.ReleaseArgs{
+				Chart: pulumi.String("metallb"),
+				RepositoryOpts: &helmv3.RepositoryOptsArgs{
+					Repo: pulumi.String("https://metallb.github.io/metallb"),
 				},
+				Version:         pulumi.String("0.15.3"),
+				Name:            pulumi.String("metallb"),
+				Namespace:       pulumi.String("metallb-system"),
+				CreateNamespace: pulumi.Bool(true),
 			})
 			if err != nil {
 				return err
 			}
-
-			_, err = yamlv2.NewConfigGroup(ctx, "metallbL2Advertisement", &yamlv2.ConfigGroupArgs{
-				Objs: pulumi.Array{
-					pulumi.Map{
-						"apiVersion": pulumi.String("metallb.io/v1beta1"),
-						"kind":       pulumi.String("L2Advertisement"),
-						"metadata": pulumi.Map{
-							"name":      pulumi.String("advertisement"),
-							"namespace": pulumi.String("metallb-system"),
-						},
+			_, err = apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
+				ApiVersion: pulumi.String("metallb.io/v1beta1"),
+				Kind:       pulumi.String("IPAddressPool"),
+				Metadata: &metav1.ObjectMetaArgs{
+					Name:      pulumi.String("first-pool"),
+					Namespace: pulumi.String("metallb-system"),
+				},
+				OtherFields: kpulumi.UntypedArgs{
+					"spec": pulumi.Map{
+						"addresses": pulumi.ToStringArray(metallb.AddressPool),
 					},
 				},
-			})
+			}, pulumi.DependsOn([]pulumi.Resource{metallbRelease}))
+
+			if err != nil {
+				return err
+			}
+
+			_, err = apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
+				ApiVersion: pulumi.String("metallb.io/v1beta1"),
+				Kind:       pulumi.String("L2Advertisement"),
+				Metadata: &metav1.ObjectMetaArgs{
+					Name:      pulumi.String("advertisement"),
+					Namespace: pulumi.String("metallb-system"),
+				},
+			}, pulumi.DependsOn([]pulumi.Resource{metallbRelease}))
 			if err != nil {
 				return err
 			}
