@@ -1,5 +1,5 @@
 config:
-  kubernetes:context: homelab
+  kubernetes:context: k8s-homelab
 
   pulumi:tags:
     pulumi:template: kubernetes-go
