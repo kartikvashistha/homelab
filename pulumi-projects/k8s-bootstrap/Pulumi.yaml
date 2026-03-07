@@ -1,0 +1,35 @@
+name: k8s-bootstrap
+description: A pulumi program to bootstrap a fresh cluster with core services
+runtime: go
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: go
+
+  kubernetes:context:
+    value: 
+      type: string
+      description: Kubernetes context to use when installing & configuring objects within it
+
+  k8s-bootstrap:installCni:
+    value:
+      type: boolean
+      description: Option to install cillium cni helm chart
+      default: false
+
+  k8s-bootstrap:metallb:
+    value:
+      description: Options to configure various metallb settings
+      install:
+        type: boolean
+        description: Option to install metallb helm chart
+        default: false
+      addressPool:
+        type: array
+        description: List of address pools to configure for metallb
+
+  k8s-bootstrap:installGatewayApiCrds:
+    value:
+      type: boolean
+      description: Option to install gateway api crds
+      default: false
