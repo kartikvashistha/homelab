@@ -27,7 +27,7 @@ func main() {
 				RepositoryOpts: &helmv3.RepositoryOptsArgs{
 					Repo: pulumi.String("https://helm.cilium.io"),
 				},
-				Version:         pulumi.String("1.18.5"),
+				Version:         pulumi.String("1.19.1"),
 				Name:            pulumi.String("cilium"),
 				Namespace:       pulumi.String("kube-system"),
 				CreateNamespace: pulumi.Bool(true),
