@@ -11,12 +11,6 @@ config:
       type: string
       description: Kubernetes context to use when installing & configuring objects within it
 
-  k8s-bootstrap:installCni:
-    value:
-      type: boolean
-      description: Option to install cillium cni helm chart
-      default: false
-
   k8s-bootstrap:metallb:
     value:
       description: Options to configure various metallb settings

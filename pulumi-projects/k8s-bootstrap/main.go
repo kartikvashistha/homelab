@@ -19,25 +19,6 @@ func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
 
-		var cni bool
-		cfg.RequireObject("installCni", &cni)
-		if cni {
-			_, err := helmv3.NewRelease(ctx, "cilium", &helmv3.ReleaseArgs{
-				Chart: pulumi.String("cilium"),
-				RepositoryOpts: &helmv3.RepositoryOptsArgs{
-					Repo: pulumi.String("https://helm.cilium.io"),
-				},
-				Version:         pulumi.String("1.19.1"),
-				Name:            pulumi.String("cilium"),
-				Namespace:       pulumi.String("kube-system"),
-				CreateNamespace: pulumi.Bool(true),
-				ValueYamlFiles:  pulumi.AssetOrArchiveArray{pulumi.NewFileAsset("./helm/values/k8s-homelab/cilium.yaml")},
-			})
-			if err != nil {
-				return err
-			}
-		}
-
 		var metallb Metallb
 		cfg.RequireObject("metallb", &metallb)
 		if metallb.Install {
