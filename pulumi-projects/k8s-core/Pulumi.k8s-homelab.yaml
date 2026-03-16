@@ -13,5 +13,11 @@ config:
       repo: "https://coredns.github.io/helm"
       valuesFile: ./helm/values/k8s-homelab/coredns.yaml
       version: 1.45.2
+    - releaseName: cert-manager
+      chart: cert-manager
+      namespace: cert-manager
+      repo: "https://charts.jetstack.io"
+      valuesFile: ./helm/values/k8s-homelab/cert-manager.yaml
+      version: 1.20.0
 
   k8s-core:manifests: "./manifests/k8s-homelab"
