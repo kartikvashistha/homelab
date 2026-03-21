@@ -2,6 +2,11 @@ config:
   kubernetes:context: k8s-homelab
 
   k8s-core:helmCharts:
+    - releaseName: istio-base
+      chart: base
+      namespace: istio-system
+      repo: "https://istio-release.storage.googleapis.com/charts"
+      version: 1.29.1
     - releaseName: istiod
       chart: istiod
       namespace: istio-system
