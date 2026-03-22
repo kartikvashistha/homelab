@@ -25,6 +25,12 @@ config:
       repo: "https://istio-release.storage.googleapis.com/charts"
       version: 1.29.1
       valuesFile: ./helm/values/k8s-homelab/istio-ztunnel.yaml
+    - releaseName: kiali-operator
+      chart: kiali-operator
+      namespace: kiali-operator
+      repo: "https://kiali.org/helm-charts"
+      valuesFile: ./helm/values/k8s-homelab/kiali-operator.yaml
+      version: 2.23.0
     - releaseName: coredns-external
       chart: coredns
       namespace: coredns
