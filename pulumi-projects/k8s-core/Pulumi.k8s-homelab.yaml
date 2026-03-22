@@ -19,7 +19,7 @@ config:
       repo: "https://istio-release.storage.googleapis.com/charts"
       version: 1.29.1
       valuesFile: ./helm/values/k8s-homelab/istio-cni.yaml
-    - releaseName: istio-ztunnel
+    - releaseName: ztunnel
       chart: ztunnel
       namespace: istio-system
       repo: "https://istio-release.storage.googleapis.com/charts"
