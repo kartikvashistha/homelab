@@ -1,0 +1,3 @@
+name: k8s
+description: Bootstrap a kubernetes cluster with various tools and configs
+runtime: go
