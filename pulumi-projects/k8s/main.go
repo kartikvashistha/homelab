@@ -48,7 +48,7 @@ func main() {
 
 		_, err = yaml.NewConfigGroup(ctx, "manifests",
 			&yaml.ConfigGroupArgs{
-				Files: []string{fmt.Sprintf("./manifests/%s/*.yaml", kubectx)},
+				Files: []string{fmt.Sprintf("./manifests/%s/*.yaml", kubectx), fmt.Sprintf("./manifests/%s/*.yml", kubectx)},
 			},
 		)
 		if err != nil {
