@@ -37,10 +37,8 @@ func main() {
 
 			if err == nil {
 				v.ValuesFile = file
-				fmt.Println("Value file detected for release: ", file)
-			} else {
-				fmt.Println("Not detected for: ", file)
 			}
+
 			_, err = helm.CreateHelmRelease(ctx, v)
 			if err != nil {
 				fmt.Println("Error during the creation of helm release!")
