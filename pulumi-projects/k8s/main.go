@@ -19,7 +19,12 @@ type k8sCore struct {
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		cfg := config.New(ctx, "")
-		kubectx := config.New(ctx, "kubernetes").Require("context")
+		var kubectx string
+		if ctx.Stack() == "dreadnought" {
+			kubectx = config.New(ctx, "kubernetes").Require("context")
+		} else {
+			kubectx = "dreadnought"
+		}
 
 		var core k8sCore
 		cfg.RequireObject("core", &core)
