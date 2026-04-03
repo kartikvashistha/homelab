@@ -12,8 +12,9 @@ type HelmChart struct {
 	Namespace   string
 	ReleaseName string
 	Repo        string
-	Version     string
+	Values      pulumi.Map
 	ValuesFile  string
+	Version     string
 }
 
 func CreateHelmRelease(ctx *pulumi.Context, h HelmChart) (*helmv3.Release, error) {
@@ -26,6 +27,7 @@ func CreateHelmRelease(ctx *pulumi.Context, h HelmChart) (*helmv3.Release, error
 		Name:            pulumi.String(h.ReleaseName),
 		Namespace:       pulumi.String(h.Namespace),
 		CreateNamespace: pulumi.Bool(true),
+		Values:          pulumi.MapInput(h.Values),
 		ValueYamlFiles:  pulumi.AssetOrArchiveArray{pulumi.NewFileAsset(h.ValuesFile)},
 	})
 	if err != nil {
