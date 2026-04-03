@@ -38,9 +38,3 @@ config:
       namespace: kiali-operator
       repo: "https://kiali.org/helm-charts"
       version: 2.23.0
-
-    - releaseName: coredns-external
-      chart: coredns
-      namespace: coredns
-      repo: "https://coredns.github.io/helm"
-      version: 1.45.2

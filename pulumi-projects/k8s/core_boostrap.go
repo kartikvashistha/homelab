@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"k8s/internal/certmanager"
+	"k8s/internal/dns"
 	"k8s/internal/metallb"
 
 	kustomizev2 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/kustomize/v2"
@@ -35,6 +36,12 @@ func BootstrapCoreServices(ctx *pulumi.Context, k k8sCore) error {
 	err := certmanager.BootstrapCertManager(ctx)
 	if err != nil {
 		fmt.Println("Error in core service setup: cert-manager")
+		return err
+	}
+
+	err = dns.BootstrapDnsResolver(ctx)
+	if err != nil {
+		fmt.Println("Error during core service setup: coredns-external")
 		return err
 	}
 
