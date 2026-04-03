@@ -30,7 +30,7 @@ func BootstrapDnsResolver(ctx *pulumi.Context) error {
 		return err
 	}
 
-	_, err = yaml.NewConfigGroup(ctx, "cert-manager-self-signed-issuer-setup",
+	_, err = yaml.NewConfigGroup(ctx, "coredns-external-configmap",
 		&yaml.ConfigGroupArgs{
 			Files: []string{"./cfg-private-dns-hosts.yaml"},
 		}, pulumi.DependsOn([]pulumi.Resource{corednsNS}))
