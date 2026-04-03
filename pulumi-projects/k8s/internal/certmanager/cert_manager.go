@@ -24,10 +24,10 @@ func BootstrapCertManager(ctx *pulumi.Context) error {
 		Namespace:   CERT_MANAGER_NAMESPACE,
 		Values: pulumi.Map{
 			"crds": pulumi.Map{
-				"enabled": pulumi.String("true"),
+				"enabled": pulumi.Bool(true),
 			},
 			"config": pulumi.Map{
-				"enableGatewayAPI": pulumi.String("true"),
+				"enableGatewayAPI": pulumi.Bool(true),
 			},
 		},
 	})
