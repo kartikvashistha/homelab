@@ -2,6 +2,8 @@ package dns
 
 import (
 	"fmt"
+	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
+	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"k8s/internal/helm"
@@ -17,10 +19,21 @@ const (
 
 func BootstrapDnsResolver(ctx *pulumi.Context) error {
 
-	_, err := yaml.NewConfigGroup(ctx, "cert-manager-self-signed-issuer-setup",
+	corednsNS, err := corev1.NewNamespace(ctx, "coredns-external-namespace", &corev1.NamespaceArgs{
+		ApiVersion: pulumi.String("string"),
+		Kind:       pulumi.String("string"),
+		Metadata: &metav1.ObjectMetaArgs{
+			Name: pulumi.String(COREDNS_NAMESPACE)},
+	})
+	if err != nil {
+		fmt.Printf("Error during the creation of namespace:%v", COREDNS_NAMESPACE)
+		return err
+	}
+
+	_, err = yaml.NewConfigGroup(ctx, "cert-manager-self-signed-issuer-setup",
 		&yaml.ConfigGroupArgs{
 			Files: []string{"./cfg-private-dns-hosts.yaml"},
-		})
+		}, pulumi.DependsOn([]pulumi.Resource{corednsNS}))
 	if err != nil {
 		fmt.Println("Error occured during creation of configmap: private-dns")
 		return err
