@@ -1,3 +1,57 @@
 name: k8s
 description: Bootstrap a kubernetes cluster with various tools and configs
 runtime: go
+
+config:
+  kubernetes:context:
+    value:
+      type: string
+      description: Kubernetes context to use when installing & configuring objects within it
+
+  k8s:core:
+    value:
+      description: Options to configure various core service installs
+      values:
+        installGatewayApiCrds:
+          type: boolean
+          description: Option to install gateway api crds
+          default: false
+        metallb:
+          description: Option to configure various metallb settings
+          values:
+            install:
+              type: bool
+              default: false
+            addressPool:
+              type: array
+              description: List of address pools to configure for metallb
+
+  k8s:helm:
+    value:
+      type: array
+      description: List of helm charts to install in a cluster
+      items:
+        releaseName:
+          type: string
+          description: Name of the helm chart to install
+          default: ""
+        chart:
+          type: string
+          description: Name of the helm chart to install
+          default: ""
+        repo:
+          type: string
+          description: Repository URL for the helm chart
+          default: ""
+        version:
+          type: string
+          description: Version of the helm chart to install
+          default: ""
+        namespace:
+          type: string
+          description: Namespace to install the helm chart in
+          default: ""
+        valuesFile:
+          type: string
+          description: Path to the values file for the helm chart
+          default: ""
