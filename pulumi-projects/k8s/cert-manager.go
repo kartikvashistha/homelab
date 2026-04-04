@@ -1,4 +1,4 @@
-package certmanager
+package main
 
 import (
 	"fmt"
@@ -15,7 +15,7 @@ const (
 	CERT_MANAGER_CHART_VERSION = "1.20.0"
 )
 
-func BootstrapCertManager(ctx *pulumi.Context) error {
+func bootstrapCertManager(ctx *pulumi.Context, k string) error {
 	certmanagerHelmRelease, err := helm.CreateHelmRelease(ctx, helm.HelmChart{
 		Chart:       CERT_MANAGER_CHART_NAME,
 		Repo:        CERT_MANAGER_CHART_REPO,
@@ -37,15 +37,14 @@ func BootstrapCertManager(ctx *pulumi.Context) error {
 	}
 
 	// Setup a selfsigned issuer, ca and cluster issuer
-	_, err = yaml.NewConfigGroup(ctx, "cert-manager-self-signed-issuer-setup",
-		&yaml.ConfigGroupArgs{
-			Files: []string{"./self-signed-ca-setup.yaml"},
-		}, pulumi.DependsOn([]pulumi.Resource{certmanagerHelmRelease}),
+	_, err = yaml.NewConfigGroup(ctx, "cert-manager-self-signed-issuer-setup", &yaml.ConfigGroupArgs{
+		Files: []string{fmt.Sprintf("./config/%s/self-signed-ca-setup.yaml", k)},
+	}, pulumi.DependsOn([]pulumi.Resource{certmanagerHelmRelease}),
 	)
 	if err != nil {
 		fmt.Println("Error during the setup of the self signed issuer!")
 		return err
 	}
-	return nil
 
+	return nil
 }

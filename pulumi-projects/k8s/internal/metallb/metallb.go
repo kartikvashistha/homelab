@@ -2,12 +2,11 @@ package metallb
 
 import (
 	"fmt"
-	"k8s/internal/helm"
-
 	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"k8s/internal/helm"
 )
 
 const (
@@ -54,7 +53,7 @@ func BootstrapMetallb(ctx *pulumi.Context, m Metallb) error {
 		return err
 	}
 
-	_, err = apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
+	_, err = apiextensions.NewCustomResource(ctx, "metallbL2Advertisement", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("metallb.io/v1beta1"),
 		Kind:       pulumi.String("L2Advertisement"),
 		Metadata: &metav1.ObjectMetaArgs{
