@@ -3,6 +3,3 @@ ambient:
 
 seLinuxOptions:
   type: spc_t
-
-# env:
-#   PILOT_ENABLE_AMBIENT: true

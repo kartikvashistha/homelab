@@ -1,0 +1,2 @@
+seLinuxOptions:
+  type: spc_t

@@ -1,2 +1,0 @@
-config:
-  kubernetes:context: k8s-homelab

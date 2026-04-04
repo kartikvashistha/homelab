@@ -1,4 +1,6 @@
 serviceType: "LoadBalancer"
+service:
+  loadBalancerIP: 192.168.50.253
 
 prometheus:
   service:
@@ -27,6 +29,7 @@ servers:
   # nodePort: 30053
   # hostPort: 53
   plugins:
+  - name: log
   - name: hosts
     parameters: /etc/private-dns/hosts
     configBlock: |-

@@ -4,3 +4,4 @@ cr:
   spec:
     auth: 
       strategy: anonymous
+
