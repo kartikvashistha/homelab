@@ -2,6 +2,8 @@ serviceType: "LoadBalancer"
 service:
   loadBalancerIP: 192.168.50.253
 
+replicaCount: 2
+
 prometheus:
   service:
     enabled: true
