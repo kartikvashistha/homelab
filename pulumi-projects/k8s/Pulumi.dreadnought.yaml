@@ -38,3 +38,9 @@ config:
       namespace: kiali-operator
       repo: "https://kiali.org/helm-charts"
       version: 2.23.0
+
+    - releaseName: headlamp
+      chart: headlamp
+      namespace: headlamp
+      repo: "https://kubernetes-sigs.github.io/headlamp"
+      version: 0.41.0
