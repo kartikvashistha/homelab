@@ -1,0 +1,47 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nas-jellyfin-service
+  namespace: istio-system
+spec:
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80         
+      targetPort: 8899 # NAS port on which Jellyfin is accessible
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: nas-jellyfin-service
+  namespace: istio-system
+  labels:
+    kubernetes.io/service-name: nas-jellyfin-service
+addressType: IPv4
+ports:
+  - name: http
+    protocol: TCP
+    port: 8899 # NAS port on which Jellyfin is accessible
+endpoints:
+  - addresses:
+      - 192.168.50.89 # IP of my NAS in my internal private network
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: jellyfin-route
+  namespace: istio-system
+spec:
+  parentRefs:
+    - name: istio-gateway
+  hostnames:
+    - "jellyfin.home.arpa"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: nas-jellyfin-service # Forwards traffic to our NAS service
+          port: 80
+

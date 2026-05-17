@@ -26,3 +26,14 @@ spec:
         mode: Terminate
         certificateRefs:
           - name: homelab-home-arpa-tls
+    - name: jellyfin-https
+      protocol: HTTPS
+      port: 443
+      hostname: "jellyfin.home.arpa"
+      allowedRoutes:
+        namespaces:
+          from: All
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: homelab-home-arpa-tls
