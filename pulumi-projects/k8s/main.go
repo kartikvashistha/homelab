@@ -6,17 +6,12 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 	"k8s/internal/helm"
-	"k8s/internal/metallb"
 	"os"
-)
-
-const (
-	GATEWAYAPI_CRDS_VERSION = "v1.4.0"
 )
 
 type k8sCore struct {
 	InstallGatewayApiCrds bool
-	Metallb               metallb.Metallb
+	Metallb               Metallb
 }
 
 func main() {
