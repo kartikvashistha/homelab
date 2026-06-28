@@ -1,0 +1,7 @@
+name: k8s-flux
+description: Go Pulumi program that bootstraps a kubernetes cluster with various addons and configurations via Flux & Flux Operator.
+runtime: go
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: kubernetes-go
