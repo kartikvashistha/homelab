@@ -1,0 +1,2 @@
+env:
+ PILOT_ENABLE_AMBIENT: true

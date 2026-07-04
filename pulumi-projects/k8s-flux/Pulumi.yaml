@@ -2,6 +2,26 @@ name: k8s-flux
 description: Go Pulumi program that bootstraps a kubernetes cluster with various addons and configurations via Flux & Flux Operator.
 runtime: go
 config:
-  pulumi:tags:
+  kubernetes:context:
     value:
-      pulumi:template: kubernetes-go
+      type: string
+      description: Kubernetes context to use when installing & configuring objects within it
+
+  k8s-flux:core:
+    value:
+      description: Options to configure various core service installs
+      values:
+        installGatewayApiCrds:
+          type: boolean
+          description: Option to install gateway api crds
+          default: false
+        metallb:
+          description: Option to configure various metallb settings
+          values:
+            install:
+              type: bool
+              default: false
+            addressPool:
+              type: array
+              description: List of address pools to configure for metallb
+

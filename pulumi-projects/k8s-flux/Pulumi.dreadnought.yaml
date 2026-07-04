@@ -1,2 +1,65 @@
 config:
   kubernetes:context: dreadnought
+
+  k8s-flux:core:
+    installGatewayApiCrds: true #TODO: CHANGEME
+    metallb:
+      install: true
+      addressPool:
+        - 192.168.50.253-192.168.50.254
+    helmCharts:
+      - releaseName: longhorn
+        repoName: longhorn
+        chart: longhorn
+        namespace: longhorn-system
+        repo: "https://charts.longhorn.io"
+        version: 1.12.x
+
+      - releaseName: istio-base
+        repoName: istio
+        chart: base
+        namespace: istio-system
+        repo: "https://istio-release.storage.googleapis.com/charts"
+        version: 1.29.x
+
+      - releaseName: istiod
+        chart: istiod
+        repoName: istio
+        namespace: istio-system
+        repo: "https://istio-release.storage.googleapis.com/charts"
+        version: 1.29.x
+
+      - releaseName: istio-cni
+        repoName: istio
+        chart: cni
+        namespace: istio-system
+        repo: "https://istio-release.storage.googleapis.com/charts"
+        version: 1.29.x
+
+      - releaseName: ztunnel
+        repoName: istio
+        chart: ztunnel
+        namespace: istio-system
+        repo: "https://istio-release.storage.googleapis.com/charts"
+        version: 1.29.x
+
+      - releaseName: kiali-operator
+        repoName: kiali
+        chart: kiali-operator
+        namespace: kiali-operator
+        repo: "https://kiali.org/helm-charts"
+        version: 2.23.0
+
+      - releaseName: headlamp
+        repoName: headlamp
+        chart: headlamp
+        namespace: headlamp
+        repo: "https://kubernetes-sigs.github.io/headlamp"
+        version: 0.41.0
+
+      - releaseName: metrics-server
+        repoName: metrics-server
+        chart: metrics-server
+        namespace: kube-system
+        repo: "https://kubernetes-sigs.github.io/metrics-server"
+        version: 3.13.0
