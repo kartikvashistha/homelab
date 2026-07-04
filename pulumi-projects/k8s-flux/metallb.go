@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"k8s-flux/internal/helm"
 
 	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
@@ -19,19 +18,7 @@ const (
 )
 
 func setupMetallb(ctx *pulumi.Context, m Metallb) error {
-	metallbRelease, err := helm.CreateHelmRelease(ctx, helm.HelmChart{
-		Chart:       METALLB_CHART_NAME,
-		Repo:        METALLB_CHART_REPO,
-		Version:     METALLB_CHART_VERSION,
-		ReleaseName: METALLB_RELEASE_NAME,
-		Namespace:   METALLB_NAMESPACE,
-	})
-	if err != nil {
-		fmt.Println("Error encountered during metallb installalation!")
-		return err
-	}
-
-	_, err = apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
+	_, err := apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("metallb.io/v1beta1"),
 		Kind:       pulumi.String("IPAddressPool"),
 		Metadata: &metav1.ObjectMetaArgs{
@@ -43,10 +30,10 @@ func setupMetallb(ctx *pulumi.Context, m Metallb) error {
 				"addresses": pulumi.ToStringArray(m.AddressPool),
 			},
 		},
-	}, pulumi.DependsOn([]pulumi.Resource{metallbRelease}))
+	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Error creating metallb IPAddressPool resource: %w", err)
 	}
 
 	_, err = apiextensions.NewCustomResource(ctx, "metallbL2Advertisement", &apiextensions.CustomResourceArgs{
@@ -56,10 +43,10 @@ func setupMetallb(ctx *pulumi.Context, m Metallb) error {
 			Name:      pulumi.String("advertisement"),
 			Namespace: pulumi.String("metallb-system"),
 		},
-	}, pulumi.DependsOn([]pulumi.Resource{metallbRelease}))
+	})
 
 	if err != nil {
-		return err
+		return fmt.Errorf("Error creating metallb L2Advertisement resource: %w", err)
 	}
 
 	return nil

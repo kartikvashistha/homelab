@@ -1,19 +1,38 @@
 config:
   kubernetes:context: dreadnought
 
+  k8s-flux:dns:
+    enabled: true
+    serviceIp: 192.168.50.253
+    mappings:
+      lbip: 192.168.50.254
+      fqdns:
+        - homelab.home.arpa
+        - jellyfin.home.arpa
+        - fluxops.home.arpa
+
   k8s-flux:core:
-    installGatewayApiCrds: true #TODO: CHANGEME
+    installGatewayApiCrds: true
+
     metallb:
       install: true
       addressPool:
         - 192.168.50.253-192.168.50.254
+
     helmCharts:
-      - releaseName: longhorn
-        repoName: longhorn
+      - releasename: longhorn
+        reponame: longhorn
         chart: longhorn
         namespace: longhorn-system
         repo: "https://charts.longhorn.io"
         version: 1.12.x
+
+      - releasename: cert-manager
+        reponame: cert-manager
+        chart: cert-manager
+        namespace: cert-manager
+        repo: "https://charts.jetstack.io"
+        version: 1.20.x
 
       - releaseName: istio-base
         repoName: istio

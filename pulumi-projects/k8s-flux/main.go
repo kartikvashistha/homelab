@@ -16,6 +16,12 @@ import (
 
 const (
 	GATEWAYAPI_CRDS_VERSION = "v1.4.0"
+
+	COREDNS_RELEASE_NAME  = "coredns-external"
+	COREDNS_CHART_NAME    = "coredns"
+	COREDNS_NAMESPACE     = "coredns"
+	COREDNS_CHART_REPO    = "https://coredns.github.io/helm"
+	COREDNS_CHART_VERSION = "1.45.2"
 )
 
 type Metallb struct {
@@ -29,13 +35,26 @@ type Core struct {
 	HelmCharts            []helm.HelmChart
 }
 
+type DnsServer struct {
+	Enabled   bool
+	ServiceIp string
+	Mappings  struct {
+		Lbip  string
+		Fqdns []string
+	}
+}
+
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
+		var helmConfig []helm.HelmChart
+		var core Core
+		var dnsServer DnsServer
+
 		cfg := config.New(ctx, "")
 		kubectx := config.New(ctx, "kubernetes").Require("context")
 
-		var core Core
 		cfg.RequireObject("core", &core)
+		cfg.RequireObject("dns", &dnsServer)
 
 		err := setupFluxOperator(ctx)
 		if err != nil {
@@ -54,26 +73,52 @@ func main() {
 		}
 
 		if core.Metallb.Install {
-			err := setupMetallb(ctx, core.Metallb)
-			if err != nil {
-				fmt.Println("Error during the setup of metallb!")
-				return err
-			}
+			helmConfig = append(helmConfig, helm.HelmChart{
+				Chart:       METALLB_CHART_NAME,
+				Repo:        METALLB_CHART_REPO,
+				Version:     METALLB_CHART_VERSION,
+				ReleaseName: METALLB_RELEASE_NAME,
+				Namespace:   METALLB_NAMESPACE,
+			})
 		}
-		err = setupCoreAddons(ctx, &core.HelmCharts, &kubectx)
+
+		if dnsServer.Enabled {
+			helmConfig = append(helmConfig, helm.HelmChart{
+				Chart:       COREDNS_CHART_NAME,
+				Repo:        COREDNS_CHART_REPO,
+				Version:     COREDNS_CHART_VERSION,
+				ReleaseName: COREDNS_RELEASE_NAME,
+				Namespace:   COREDNS_NAMESPACE,
+				Values: pulumi.Map{
+					"serviceType": pulumi.String("LoadBalancer"),
+					"service": pulumi.Map{
+						"loadBalancerIP": pulumi.String(dnsServer.ServiceIp),
+					},
+					"replicaCount": pulumi.String("2"),
+				},
+			})
+		}
+
+		helmConfig = append(helmConfig, core.HelmCharts...)
+		err = helmReleaseGenerator(ctx, &helmConfig, &kubectx)
 		if err != nil {
 			return err
 		}
 
+		err = setupMetallb(ctx, core.Metallb)
+		if err != nil {
+			fmt.Println("Error during the setup of metallb!")
+			return err
+		}
 		return nil
 	})
 }
 
-func setupCoreAddons(ctx *pulumi.Context, helmCharts *[]helm.HelmChart, kubectx *string) error {
+func helmReleaseGenerator(ctx *pulumi.Context, helmCharts *[]helm.HelmChart, kubectx *string) error {
 	var inputsList pulumi.MapArray
 	for _, item := range *helmCharts {
 		var helmValuesOverrides any
-		filePath := fmt.Sprintf("./helm-overrides/%s/%s/values.yaml", *kubectx, item.ReleaseName)
+		filePath := fmt.Sprintf("./manifests/%s/helm-overrides/%s/values.yaml", *kubectx, item.ReleaseName)
 
 		if data, err := os.ReadFile(filePath); err == nil {
 			_ = yaml.Unmarshal(data, &helmValuesOverrides)
@@ -142,12 +187,12 @@ func setupCoreAddons(ctx *pulumi.Context, helmCharts *[]helm.HelmChart, kubectx 
 		},
 	}
 
-	_, err := apiextensions.NewCustomResource(ctx, "coreaddons-resourceset",
+	_, err := apiextensions.NewCustomResource(ctx, "helmReleaseResourceSet",
 		&apiextensions.CustomResourceArgs{
 			ApiVersion: pulumi.String("fluxcd.controlplane.io/v1"),
 			Kind:       pulumi.String("ResourceSet"),
 			Metadata: &metav1.ObjectMetaArgs{
-				Name:      pulumi.String("core-addons-generator"),
+				Name:      pulumi.String("helm-release-generator"),
 				Namespace: pulumi.String("default"),
 				Annotations: pulumi.StringMap{
 					"fluxcd.controlplane.io/reconcile":      pulumi.String("enabled"),
