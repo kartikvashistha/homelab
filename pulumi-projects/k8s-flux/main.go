@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 	"gopkg.in/yaml.v3"
+	"k8s-flux/components/flux"
 )
 
 const (
@@ -105,6 +106,20 @@ func main() {
 			return err
 		}
 
+		_, err = flux.HelmResourceSet(ctx, "test-flux-component", &flux.ResourceSetArgs{
+			ChartName:        pulumi.String("headlamp"),
+			ChartVersion:     pulumi.String("0.41.0"),
+			ReleaseName:      pulumi.String("headlamp"),
+			ReleaseNamespace: pulumi.String("headlamp"),
+			RepoName:         pulumi.String("headlamp"),
+			RepoUrl:          pulumi.String("https://kubernetes-sigs.github.io/headlamp"),
+			Values:           pulumi.Map{},
+		})
+
+		if err != nil {
+			return fmt.Errorf("Error creating our custom FluxComponent Resource: %w", err)
+		}
+
 		err = setupMetallb(ctx, core.Metallb)
 		if err != nil {
 			fmt.Println("Error during the setup of metallb!")
@@ -127,12 +142,12 @@ func helmReleaseGenerator(ctx *pulumi.Context, helmCharts *[]helm.HelmChart, kub
 		}
 
 		inputsList = append(inputsList, pulumi.Map{
-			"repoName":     pulumi.String(item.Chart),
-			"repoUrl":      pulumi.String(item.Repo),
 			"chartName":    pulumi.String(item.Chart),
 			"chartVersion": pulumi.String(item.Version),
-			"releaseName":  pulumi.String(item.ReleaseName),
 			"namespace":    pulumi.String(item.Namespace),
+			"releaseName":  pulumi.String(item.ReleaseName),
+			"repoName":     pulumi.String(item.Chart),
+			"repoUrl":      pulumi.String(item.Repo),
 			"values":       pulumi.Any(helmValuesOverrides),
 		})
 	}

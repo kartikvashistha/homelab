@@ -69,12 +69,12 @@ config:
         repo: "https://kiali.org/helm-charts"
         version: 2.23.0
 
-      - releaseName: headlamp
-        repoName: headlamp
-        chart: headlamp
-        namespace: headlamp
-        repo: "https://kubernetes-sigs.github.io/headlamp"
-        version: 0.41.0
+      # - releaseName: headlamp
+      #   repoName: headlamp
+      #   chart: headlamp
+      #   namespace: headlamp
+      #   repo: "https://kubernetes-sigs.github.io/headlamp"
+      #   version: 0.41.0
 
       - releaseName: metrics-server
         repoName: metrics-server
