@@ -1,7 +1,7 @@
 config:
   kubernetes:context: dreadnought
 
-  k8s:core:
+  k8s:networking:
     installGatewayApiCrds: true
     metallb:
       install: true
