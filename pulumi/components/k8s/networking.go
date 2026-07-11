@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"fmt"
+
 	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
@@ -19,6 +20,10 @@ const (
 	METALLB_NAMESPACE     = "metallb-system"
 	METALLB_CHART_REPO    = "https://metallb.github.io/metallb"
 	METALLB_CHART_VERSION = "0.15.3"
+
+	ISTIO_NAMESPACE     = "istio-system"
+	ISTIO_CHART_REPO    = "https://istio-release.storage.googleapis.com/charts"
+	ISTIO_CHART_VERSION = "1.29.1"
 )
 
 // This component should:
@@ -60,6 +65,11 @@ func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkCo
 	}
 
 	err = metallb(ctx, &args.Metallb, comp)
+	if err != nil {
+		return nil, err
+	}
+
+	err = setupIstio(ctx, comp)
 	if err != nil {
 		return nil, err
 	}
@@ -133,6 +143,76 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 			return err
 		}
 		return nil
+	}
+
+	return nil
+}
+
+func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
+	istioNs, err := corev1.NewNamespace(ctx, "istio-ns", &corev1.NamespaceArgs{
+		Metadata: &metav1.ObjectMetaArgs{
+			Name: pulumi.String(ISTIO_NAMESPACE),
+		},
+	}, pulumi.Parent(nc))
+
+	if err != nil {
+		return err
+	}
+
+	_, err = helmv3.NewRelease(ctx, "istio-cni", &helmv3.ReleaseArgs{
+		Chart: pulumi.String("cni"),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(ISTIO_CHART_REPO),
+		},
+		Name:      pulumi.String("istio-cni"),
+		Namespace: pulumi.String(ISTIO_NAMESPACE),
+		Version:   pulumi.String(ISTIO_CHART_VERSION),
+		Values: pulumi.Map{
+			"ambient": pulumi.Map{
+				"enabled": pulumi.Bool(true),
+			},
+			"seLinuxOptions": pulumi.Map{
+				"type": pulumi.String("spc_t"),
+			},
+		}},
+		pulumi.Parent(nc),
+		pulumi.DependsOn([]pulumi.Resource{istioNs}))
+
+	if err != nil {
+		return err
+	}
+
+	_, err = helmv3.NewRelease(ctx, "istiod", &helmv3.ReleaseArgs{
+		Chart: pulumi.String("istiod"),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(ISTIO_CHART_REPO),
+		},
+		Name:      pulumi.String("istiod"),
+		Namespace: pulumi.String(ISTIO_NAMESPACE),
+		Version:   pulumi.String(ISTIO_CHART_VERSION),
+		//TODO:values
+	},
+		pulumi.Parent(nc),
+		pulumi.DependsOn([]pulumi.Resource{istioNs}))
+
+	if err != nil {
+		return err
+	}
+
+	_, err = helmv3.NewRelease(ctx, "istio-base", &helmv3.ReleaseArgs{
+		Chart: pulumi.String("base"),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(ISTIO_CHART_REPO),
+		},
+		Name:      pulumi.String("istio-base"),
+		Namespace: pulumi.String(ISTIO_NAMESPACE), //TODO:values
+		Version:   pulumi.String(ISTIO_CHART_VERSION),
+	},
+		pulumi.Parent(nc),
+		pulumi.DependsOn([]pulumi.Resource{istioNs}))
+
+	if err != nil {
+		return err
 	}
 
 	return nil
