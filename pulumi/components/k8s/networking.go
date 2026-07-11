@@ -42,30 +42,41 @@ type NetworkComponentArgs struct {
 
 func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkComponentArgs, opts ...pulumi.ResourceOption) (*NetworkComponent, error) {
 	comp := &NetworkComponent{}
+	err := ctx.RegisterComponentResource("networking:core", name, comp, opts...)
+	if err != nil {
+		return nil, err
+	}
 
 	// var gatewayapicrds kustomizev2.Directory
 
 	if args.InstallGatewayApiCrds {
 		_, err := kustomizev2.NewDirectory(ctx, "gatewayapicrds", &kustomizev2.DirectoryArgs{
 			// gatewayapicrds, err := kustomizev2.NewDirectory(ctx, "gatewayapicrds", &kustomizev2.DirectoryArgs{
-			Directory: pulumi.String(fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GATEWAYAPI_CRDS_VERSION))})
+			Directory: pulumi.String(fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GATEWAYAPI_CRDS_VERSION))}, pulumi.Parent(comp))
 
 		if err != nil {
 			return nil, fmt.Errorf("Error during the installation of Gateway API CRDs!")
 		}
 	}
 
-	if args.Metallb.Install {
+	err = metallb(ctx, &args.Metallb, comp)
+	if err != nil {
+		return nil, err
+	}
+
+	return comp, nil
+}
+
+func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
+	if m.Install {
 		metallbNs, err := corev1.NewNamespace(ctx, "metallbns", &corev1.NamespaceArgs{
-			// ApiVersion: pulumi.String("v1"),
-			// Kind:       pulumi.String("string"),
 			Metadata: &metav1.ObjectMetaArgs{
 				Name: pulumi.String(METALLB_NAMESPACE),
 			},
-		})
+		}, pulumi.Parent(nc))
 
 		if err != nil {
-			return nil, fmt.Errorf("Error encountered during the creation of metallb's namespace!")
+			return fmt.Errorf("Error encountered during the creation of metallb's namespace!")
 		}
 
 		metallbRelease, err := helmv3.NewRelease(ctx, METALLB_RELEASE_NAME, &helmv3.ReleaseArgs{
@@ -76,10 +87,13 @@ func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkCo
 			Version:   pulumi.String(METALLB_CHART_VERSION),
 			Name:      pulumi.String(METALLB_RELEASE_NAME),
 			Namespace: pulumi.String(METALLB_NAMESPACE),
-		}, pulumi.DependsOn([]pulumi.Resource{metallbNs}))
+		},
+			pulumi.DependsOn([]pulumi.Resource{metallbNs}),
+			pulumi.Parent(nc),
+		)
 
 		if err != nil {
-			return nil, fmt.Errorf("Error encountered during the creation of metallb's Helm Release!")
+			return fmt.Errorf("Error encountered during the creation of metallb's Helm Release!")
 		}
 
 		metallbIpAddressPool, err := apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
@@ -91,13 +105,16 @@ func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkCo
 			},
 			OtherFields: kpulumi.UntypedArgs{
 				"spec": pulumi.Map{
-					"addresses": pulumi.ToStringArray(args.Metallb.AddressPool),
+					"addresses": pulumi.ToStringArray(m.AddressPool),
 				},
 			},
-		}, pulumi.DependsOn([]pulumi.Resource{metallbRelease}))
+		},
+			pulumi.DependsOn([]pulumi.Resource{metallbRelease}),
+			pulumi.Parent(nc),
+		)
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		_, err = apiextensions.NewCustomResource(ctx, "metallbL2Advertisement", &apiextensions.CustomResourceArgs{
@@ -107,12 +124,16 @@ func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkCo
 				Name:      pulumi.String("advertisement"),
 				Namespace: pulumi.String("metallb-system"),
 			},
-		}, pulumi.DependsOn([]pulumi.Resource{metallbIpAddressPool}))
+		},
+			pulumi.DependsOn([]pulumi.Resource{metallbIpAddressPool}),
+			pulumi.Parent(nc),
+		)
 
 		if err != nil {
-			return nil, err
+			return err
 		}
+		return nil
 	}
 
-	return comp, nil
+	return nil
 }
