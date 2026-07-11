@@ -6,14 +6,7 @@ import (
 	"github.com/kartikvashistha/homelab/pulumi/components/k8s"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
-	// "k8s/internal/helm"
-	// "os"
 )
-
-// type k8sCore struct {
-// 	InstallGatewayApiCrds bool
-// 	Metallb               Metallb
-// }
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
@@ -23,10 +16,7 @@ func main() {
 
 		var n k8s.NetworkComponentArgs
 		cfg.RequireObject("networking", &n)
-		_, err := k8s.SetupNetworkingComponents(ctx, "core-networking", &n) // InstallGatewayApiCrds: true,
-		// Metallb: k8s.Metallb{
-		// 	Install: true,
-		// },
+		_, err := k8s.SetupNetworkingComponents(ctx, "core-networking", &n)
 
 		if err != nil {
 			return err
