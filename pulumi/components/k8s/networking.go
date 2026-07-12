@@ -24,6 +24,12 @@ const (
 	ISTIO_NAMESPACE     = "istio-system"
 	ISTIO_CHART_REPO    = "https://istio-release.storage.googleapis.com/charts"
 	ISTIO_CHART_VERSION = "1.29.1"
+
+	KIALI_OPERATOR_RELEASE_NAME = "kiali-operator"
+	KIALI_OPERATOR_CHART_NAME   = "kiali-operator"
+	KIALI_OPERATOR_NAMESPACE    = "kiali-operator"
+	KIALI_OPERATOR_REPO         = "https://kiali.org/helm-charts"
+	KIALI_OPERATOR_VERSION      = "2.23.0"
 )
 
 type NetworkComponent struct {
@@ -147,6 +153,7 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 // (1) Service mesh
 // (2) GatewayClass &
 // (3) More istio stuff that I dont fully understand yet
+// (4) Kiali Operator
 func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 	istioNs, err := corev1.NewNamespace(ctx, "istio-ns", &corev1.NamespaceArgs{
 		Metadata: &metav1.ObjectMetaArgs{
@@ -229,6 +236,37 @@ func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 			},
 		},
 	}, pulumi.Parent(nc), pulumi.DependsOn([]pulumi.Resource{istioNs}))
+
+	kialiOperatorNs, err := corev1.NewNamespace(ctx, KIALI_OPERATOR_NAMESPACE+"-ns", &corev1.NamespaceArgs{
+		Metadata: &metav1.ObjectMetaArgs{
+			Name: pulumi.String(KIALI_OPERATOR_RELEASE_NAME),
+		},
+	}, pulumi.Parent(nc))
+	if err != nil {
+		return err
+	}
+	_, err = helmv3.NewRelease(ctx, "kiali-operator", &helmv3.ReleaseArgs{
+		Chart: pulumi.String(KIALI_OPERATOR_CHART_NAME),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(KIALI_OPERATOR_REPO),
+		},
+		Name:      pulumi.String(KIALI_OPERATOR_RELEASE_NAME),
+		Namespace: pulumi.String(KIALI_OPERATOR_RELEASE_NAME),
+		Version:   pulumi.String(KIALI_OPERATOR_VERSION),
+		Values: pulumi.Map{
+			"cr": pulumi.Map{
+				"create":    pulumi.Bool(true),
+				"namespace": pulumi.String(ISTIO_NAMESPACE),
+				"spec": pulumi.Map{
+					"auth": pulumi.Map{
+						"strategy": pulumi.String("anonymous"),
+					},
+				},
+			},
+		},
+	},
+		pulumi.Parent(nc),
+		pulumi.DependsOn([]pulumi.Resource{istioNs, kialiOperatorNs}))
 
 	return nil
 }
