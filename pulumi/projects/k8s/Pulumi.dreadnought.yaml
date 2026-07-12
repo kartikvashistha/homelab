@@ -1,7 +1,7 @@
 config:
   kubernetes:context: dreadnought
 
-  k8s:core:
+  k8s:networking:
     installGatewayApiCrds: true
     metallb:
       install: true
@@ -9,35 +9,11 @@ config:
         - 192.168.50.253-192.168.50.254
 
   k8s:helm:
-    - releaseName: istio-base
-      chart: base
-      namespace: istio-system
-      repo: "https://istio-release.storage.googleapis.com/charts"
-      version: 1.29.1
-
-    - releaseName: istiod
-      chart: istiod
-      namespace: istio-system
-      repo: "https://istio-release.storage.googleapis.com/charts"
-      version: 1.29.1
-
-    - releaseName: istio-cni
-      chart: cni
-      namespace: istio-system
-      repo: "https://istio-release.storage.googleapis.com/charts"
-      version: 1.29.1
-
-    - releaseName: ztunnel
-      chart: ztunnel
-      namespace: istio-system
-      repo: "https://istio-release.storage.googleapis.com/charts"
-      version: 1.29.1
-
-    - releaseName: kiali-operator
-      chart: kiali-operator
-      namespace: kiali-operator
-      repo: "https://kiali.org/helm-charts"
-      version: 2.23.0
+    - releaseName: coredns-external
+      chart: coredns
+      namespace: coredns
+      repo: "https://coredns.github.io/helm"
+      version: "1.45.2"
 
     - releaseName: headlamp
       chart: headlamp
