@@ -26,10 +26,6 @@ const (
 	ISTIO_CHART_VERSION = "1.29.1"
 )
 
-// This component should:
-// 1. Install Gateway API CRD's
-// 2. Install & configure metallb
-// 3. Install & configure Istio Components
 type NetworkComponent struct {
 	pulumi.ResourceState
 	// Endpoint pulumi.StringOutput `pulumi:"endpoint"`
@@ -47,7 +43,7 @@ type NetworkComponentArgs struct {
 
 func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkComponentArgs, opts ...pulumi.ResourceOption) (*NetworkComponent, error) {
 	comp := &NetworkComponent{}
-	err := ctx.RegisterComponentResource("networking:core", name, comp, opts...)
+	err := ctx.RegisterComponentResource("CustomComponent:k8s:Networking", name, comp, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,8 +53,8 @@ func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkCo
 	if args.InstallGatewayApiCrds {
 		_, err := kustomizev2.NewDirectory(ctx, "gatewayapicrds", &kustomizev2.DirectoryArgs{
 			// gatewayapicrds, err := kustomizev2.NewDirectory(ctx, "gatewayapicrds", &kustomizev2.DirectoryArgs{
-			Directory: pulumi.String(fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GATEWAYAPI_CRDS_VERSION))}, pulumi.Parent(comp))
-
+			Directory: pulumi.String(fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GATEWAYAPI_CRDS_VERSION)),
+		}, pulumi.Parent(comp))
 		if err != nil {
 			return nil, fmt.Errorf("Error during the installation of Gateway API CRDs!")
 		}
@@ -84,61 +80,60 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 				Name: pulumi.String(METALLB_NAMESPACE),
 			},
 		}, pulumi.Parent(nc))
-
 		if err != nil {
 			return fmt.Errorf("Error encountered during the creation of metallb's namespace!")
 		}
 
-		metallbRelease, err := helmv3.NewRelease(ctx, METALLB_RELEASE_NAME, &helmv3.ReleaseArgs{
-			Chart: pulumi.String(METALLB_CHART_NAME),
-			RepositoryOpts: &helmv3.RepositoryOptsArgs{
-				Repo: pulumi.String(METALLB_CHART_REPO),
+		metallbRelease, err := helmv3.NewRelease(
+			ctx, METALLB_RELEASE_NAME, &helmv3.ReleaseArgs{
+				Chart: pulumi.String(METALLB_CHART_NAME),
+				RepositoryOpts: &helmv3.RepositoryOptsArgs{
+					Repo: pulumi.String(METALLB_CHART_REPO),
+				},
+				Version:   pulumi.String(METALLB_CHART_VERSION),
+				Name:      pulumi.String(METALLB_RELEASE_NAME),
+				Namespace: pulumi.String(METALLB_NAMESPACE),
 			},
-			Version:   pulumi.String(METALLB_CHART_VERSION),
-			Name:      pulumi.String(METALLB_RELEASE_NAME),
-			Namespace: pulumi.String(METALLB_NAMESPACE),
-		},
 			pulumi.DependsOn([]pulumi.Resource{metallbNs}),
 			pulumi.Parent(nc),
 		)
-
 		if err != nil {
 			return fmt.Errorf("Error encountered during the creation of metallb's Helm Release!")
 		}
 
-		metallbIpAddressPool, err := apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
-			ApiVersion: pulumi.String("metallb.io/v1beta1"),
-			Kind:       pulumi.String("IPAddressPool"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Name:      pulumi.String("first-pool"),
-				Namespace: pulumi.String("metallb-system"),
-			},
-			OtherFields: kpulumi.UntypedArgs{
-				"spec": pulumi.Map{
-					"addresses": pulumi.ToStringArray(m.AddressPool),
+		metallbIpAddressPool, err := apiextensions.NewCustomResource(
+			ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
+				ApiVersion: pulumi.String("metallb.io/v1beta1"),
+				Kind:       pulumi.String("IPAddressPool"),
+				Metadata: &metav1.ObjectMetaArgs{
+					Name:      pulumi.String("first-pool"),
+					Namespace: pulumi.String("metallb-system"),
+				},
+				OtherFields: kpulumi.UntypedArgs{
+					"spec": pulumi.Map{
+						"addresses": pulumi.ToStringArray(m.AddressPool),
+					},
 				},
 			},
-		},
 			pulumi.DependsOn([]pulumi.Resource{metallbRelease}),
 			pulumi.Parent(nc),
 		)
-
 		if err != nil {
 			return err
 		}
 
-		_, err = apiextensions.NewCustomResource(ctx, "metallbL2Advertisement", &apiextensions.CustomResourceArgs{
-			ApiVersion: pulumi.String("metallb.io/v1beta1"),
-			Kind:       pulumi.String("L2Advertisement"),
-			Metadata: &metav1.ObjectMetaArgs{
-				Name:      pulumi.String("advertisement"),
-				Namespace: pulumi.String("metallb-system"),
+		_, err = apiextensions.NewCustomResource(
+			ctx, "metallbL2Advertisement", &apiextensions.CustomResourceArgs{
+				ApiVersion: pulumi.String("metallb.io/v1beta1"),
+				Kind:       pulumi.String("L2Advertisement"),
+				Metadata: &metav1.ObjectMetaArgs{
+					Name:      pulumi.String("advertisement"),
+					Namespace: pulumi.String("metallb-system"),
+				},
 			},
-		},
 			pulumi.DependsOn([]pulumi.Resource{metallbIpAddressPool}),
 			pulumi.Parent(nc),
 		)
-
 		if err != nil {
 			return err
 		}
@@ -148,13 +143,16 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 	return nil
 }
 
+// This function sets up the various istio components for:
+// (1) Service mesh
+// (2) GatewayClass &
+// (3) More istio stuff that I dont fully understand yet
 func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 	istioNs, err := corev1.NewNamespace(ctx, "istio-ns", &corev1.NamespaceArgs{
 		Metadata: &metav1.ObjectMetaArgs{
 			Name: pulumi.String(ISTIO_NAMESPACE),
 		},
 	}, pulumi.Parent(nc))
-
 	if err != nil {
 		return err
 	}
@@ -174,10 +172,10 @@ func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 			"seLinuxOptions": pulumi.Map{
 				"type": pulumi.String("spc_t"),
 			},
-		}},
+		},
+	},
 		pulumi.Parent(nc),
 		pulumi.DependsOn([]pulumi.Resource{istioNs}))
-
 	if err != nil {
 		return err
 	}
@@ -190,11 +188,14 @@ func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 		Name:      pulumi.String("istiod"),
 		Namespace: pulumi.String(ISTIO_NAMESPACE),
 		Version:   pulumi.String(ISTIO_CHART_VERSION),
-		//TODO:values
+		Values: pulumi.Map{
+			"env": pulumi.Map{
+				"PILOT_ENABLE_AMBIENT": pulumi.Bool(true),
+			},
+		},
 	},
 		pulumi.Parent(nc),
 		pulumi.DependsOn([]pulumi.Resource{istioNs}))
-
 	if err != nil {
 		return err
 	}
@@ -205,15 +206,29 @@ func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 			Repo: pulumi.String(ISTIO_CHART_REPO),
 		},
 		Name:      pulumi.String("istio-base"),
-		Namespace: pulumi.String(ISTIO_NAMESPACE), //TODO:values
+		Namespace: pulumi.String(ISTIO_NAMESPACE),
 		Version:   pulumi.String(ISTIO_CHART_VERSION),
 	},
 		pulumi.Parent(nc),
 		pulumi.DependsOn([]pulumi.Resource{istioNs}))
-
 	if err != nil {
 		return err
 	}
+
+	_, err = helmv3.NewRelease(ctx, "ztunnel", &helmv3.ReleaseArgs{
+		Chart: pulumi.String("ztunnel"),
+		RepositoryOpts: &helmv3.RepositoryOptsArgs{
+			Repo: pulumi.String(ISTIO_CHART_REPO),
+		},
+		Name:      pulumi.String("ztunnel"),
+		Namespace: pulumi.String(ISTIO_NAMESPACE),
+		Version:   pulumi.String(ISTIO_CHART_VERSION),
+		Values: pulumi.Map{
+			"seLinuxOptions": pulumi.Map{
+				"type": pulumi.String("spc_t"),
+			},
+		},
+	}, pulumi.Parent(nc), pulumi.DependsOn([]pulumi.Resource{istioNs}))
 
 	return nil
 }

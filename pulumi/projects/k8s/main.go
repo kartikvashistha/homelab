@@ -1,7 +1,6 @@
 package main
 
 import (
-	// "fmt"
 	// "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
 	"github.com/kartikvashistha/homelab/pulumi/components/k8s"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -18,6 +17,11 @@ func main() {
 		cfg.RequireObject("networking", &n)
 		_, err := k8s.SetupNetworkingComponents(ctx, "core-networking", &n)
 
+		if err != nil {
+			return err
+		}
+
+		_, err = k8s.SetupCertManagerComponents(ctx, "cert-manager", &k8s.CertManagerArgs{EnableGatewayAPI: true, InstallCrds: true})
 		if err != nil {
 			return err
 		}
