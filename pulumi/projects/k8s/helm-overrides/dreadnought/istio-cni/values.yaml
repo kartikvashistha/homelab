@@ -1,5 +1,0 @@
-ambient:
-  enabled: true
-
-seLinuxOptions:
-  type: spc_t

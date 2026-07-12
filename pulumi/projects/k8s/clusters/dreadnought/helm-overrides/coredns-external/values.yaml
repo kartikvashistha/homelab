@@ -33,9 +33,10 @@ servers:
   plugins:
   - name: log
   - name: hosts
-    parameters: /etc/private-dns/hosts
     configBlock: |-
-        fallthrough
+      192.168.50.254 homelab.home.arpa
+      192.168.50.254 jellyfin.home.arpa
+      fallthrough
   - name: forward
     parameters: . 1.1.1.1
   - name: errors
@@ -77,14 +78,14 @@ servers:
 #     parameters: /opt/coredns/*.conf
 extraConfig: {}
 
-extraVolumes:
-  - name: private-dns
-    configMap:
-      name: private-dns-hosts
+# extraVolumes:
+#   - name: private-dns
+#     configMap:
+#       name: private-dns-hosts
 # optional array of mount points for extraVolumes
 # extraVolumeMounts: []
 # - name: some-volume-name
 #   mountPath: /etc/wherever
-extraVolumeMounts:
-  - name: private-dns
-    mountPath: /etc/private-dns
+# extraVolumeMounts:
+#   - name: private-dns
+#     mountPath: /etc/private-dns

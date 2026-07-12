@@ -8,9 +8,9 @@ config:
       type: string
       description: Kubernetes context to use when installing & configuring objects within it
 
-  k8s:core:
+  k8s:networking:
     value:
-      description: Options to configure various core service installs
+      description: Options to configure various networking components for a cluster
       values:
         installGatewayApiCrds:
           type: boolean
@@ -50,8 +50,4 @@ config:
         namespace:
           type: string
           description: Namespace to install the helm chart in
-          default: ""
-        valuesFile:
-          type: string
-          description: Path to the values file for the helm chart
           default: ""
