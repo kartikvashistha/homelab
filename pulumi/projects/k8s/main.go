@@ -52,6 +52,7 @@ func main() {
 				RepositoryOpts: &helmv3.RepositoryOptsArgs{
 					Repo: pulumi.String(v.Repo),
 				},
+				Name:            pulumi.String(v.ReleaseName),
 				Version:         pulumi.String(v.Version),
 				CreateNamespace: pulumi.Bool(true),
 				ValueYamlFiles:  pulumi.AssetOrArchiveArray{pulumi.NewFileAsset(file)},
