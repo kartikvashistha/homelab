@@ -31,6 +31,10 @@ func main() {
 			return err
 		}
 
+		if _, err = k8s.NewStorageClassComponent(ctx, "storageclass-setup", &k8s.StorageClassArgs{}); err != nil {
+			return err
+		}
+
 		certManager, err := k8s.SetupCertManagerComponents(ctx, "cert-manager", &k8s.CertManagerArgs{
 			EnableGatewayAPI: nc.InstallGatewayApiCrds,
 			InstallCrds:      true,
