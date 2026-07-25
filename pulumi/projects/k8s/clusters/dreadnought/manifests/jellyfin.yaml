@@ -7,7 +7,7 @@ spec:
   ports:
     - name: http
       protocol: TCP
-      port: 80         
+      port: 80
       targetPort: 8899 # NAS port on which Jellyfin is accessible
 ---
 apiVersion: discovery.k8s.io/v1
@@ -35,7 +35,7 @@ spec:
   parentRefs:
     - name: istio-gateway
   hostnames:
-    - "jellyfin.home.arpa"
+    - "jellyfin.lan"
   rules:
     - matches:
         - path:
@@ -44,4 +44,3 @@ spec:
       backendRefs:
         - name: nas-jellyfin-service # Forwards traffic to our NAS service
           port: 80
-

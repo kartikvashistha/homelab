@@ -5,9 +5,9 @@ metadata:
   namespace: headlamp
 spec:
   parentRefs:
-    - name: istio-gateway  
+    - name: istio-gateway
       namespace: istio-system
-  hostnames: ["homelab.home.arpa"]
+  hostnames: ["homelab.lan"]
   rules:
     - matches:
         - path:

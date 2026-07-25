@@ -21,39 +21,39 @@ prometheus:
 # Default zone is what Kubernetes recommends:
 # https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#coredns-configmap-options
 servers:
-- zones:
-  - zone: .
-    use_tcp: true
-  port: 53
-  # -- expose the service on a different port
-  # servicePort: 5353
-  # If serviceType is nodePort you can specify nodePort here
-  # nodePort: 30053
-  # hostPort: 53
-  plugins:
-  - name: log
-  - name: hosts
-    configBlock: |-
-      192.168.50.254 homelab.home.arpa
-      192.168.50.254 jellyfin.home.arpa
-      fallthrough
-  - name: forward
-    parameters: . 1.1.1.1
-  - name: errors
-  # Serves a /health endpoint on :8080, required for livenessProbe
-  - name: health
-    configBlock: |-
-      lameduck 5s
-  # Serves a /ready endpoint on :8181, required for readinessProbe
-  - name: ready
-  # Serves a /metrics endpoint on :9153, required for serviceMonitor
-  - name: prometheus
-    parameters: 0.0.0.0:9153
-  - name: cache
-    parameters: 30
-  - name: loop
-  - name: reload
-  - name: loadbalance
+  - zones:
+      - zone: .
+        use_tcp: true
+    port: 53
+    # -- expose the service on a different port
+    # servicePort: 5353
+    # If serviceType is nodePort you can specify nodePort here
+    # nodePort: 30053
+    # hostPort: 53
+    plugins:
+      - name: log
+      - name: hosts
+        configBlock: |-
+          192.168.50.254 homelab.lan
+          192.168.50.254 jellyfin.lan
+          fallthrough
+      - name: forward
+        parameters: . 1.1.1.1
+      - name: errors
+      # Serves a /health endpoint on :8080, required for livenessProbe
+      - name: health
+        configBlock: |-
+          lameduck 5s
+      # Serves a /ready endpoint on :8181, required for readinessProbe
+      - name: ready
+      # Serves a /metrics endpoint on :9153, required for serviceMonitor
+      - name: prometheus
+        parameters: 0.0.0.0:9153
+      - name: cache
+        parameters: 30
+      - name: loop
+      - name: reload
+      - name: loadbalance
 
 # Complete example with all the options:
 # - zones:                 # the `zones` block can be left out entirely, defaults to "."

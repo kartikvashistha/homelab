@@ -12,29 +12,29 @@ spec:
     - name: http
       protocol: HTTP
       port: 80
-      hostname: "homelab.home.arpa"
+      hostname: "homelab.lan"
       allowedRoutes:
         namespaces:
           from: All
     - name: https
       protocol: HTTPS
       port: 443
-      hostname: "homelab.home.arpa"
+      hostname: "homelab.lan"
       allowedRoutes:
         namespaces:
           from: All
       tls:
         mode: Terminate
         certificateRefs:
-          - name: homelab-home-arpa-tls
+          - name: homelab-lan-tls
     - name: jellyfin-https
       protocol: HTTPS
       port: 443
-      hostname: "jellyfin.home.arpa"
+      hostname: "jellyfin.lan"
       allowedRoutes:
         namespaces:
           from: All
       tls:
         mode: Terminate
         certificateRefs:
-          - name: homelab-home-arpa-tls
+          - name: homelab-lan-tls
