@@ -8,7 +8,7 @@ spec:
   parentRefs:
     - name: istio-gateway
       namespace: istio-system
-  hostnames: ["homelab.lan"]
+  hostnames: ["homelab.internal"]
   rules:
     - matches:
         - path:

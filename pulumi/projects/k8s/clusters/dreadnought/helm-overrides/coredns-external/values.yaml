@@ -34,8 +34,8 @@ servers:
       - name: log
       - name: hosts
         configBlock: |-
-          192.168.50.254 homelab.lan
-          192.168.50.254 jellyfin.lan
+          192.168.50.254 homelab.internal
+          192.168.50.254 jellyfin.internal
           fallthrough
       - name: forward
         parameters: . 1.1.1.1

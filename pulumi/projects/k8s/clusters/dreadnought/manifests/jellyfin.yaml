@@ -35,7 +35,7 @@ spec:
   parentRefs:
     - name: istio-gateway
   hostnames:
-    - "jellyfin.lan"
+    - "jellyfin.internal"
   rules:
     - matches:
         - path:
