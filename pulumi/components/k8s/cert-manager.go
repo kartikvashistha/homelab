@@ -3,6 +3,8 @@ package k8s
 import (
 	"fmt"
 
+	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
+	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	corev1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/core/v1"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
@@ -44,7 +46,7 @@ func SetupCertManagerComponents(ctx *pulumi.Context, name string, args *CertMana
 		return nil, fmt.Errorf("Error encountered during the creation of metallb's namespace!")
 	}
 
-	_, err = helmv3.NewRelease(
+	cm, err := helmv3.NewRelease(
 		ctx, CERT_MANAGER_RELEASE_NAME, &helmv3.ReleaseArgs{
 			Chart: pulumi.String(CERT_MANAGER_CHART_NAME),
 			RepositoryOpts: &helmv3.RepositoryOptsArgs{
@@ -70,8 +72,69 @@ func SetupCertManagerComponents(ctx *pulumi.Context, name string, args *CertMana
 	}
 
 	if args.SelfSignedCaSetup {
+		ssi, err := apiextensions.NewCustomResource(ctx, "selfsigned-issuer", &apiextensions.CustomResourceArgs{
+			ApiVersion: pulumi.String("cert-manager.io/v1"),
+			Kind:       pulumi.String("ClusterIssuer"),
+			Metadata: &metav1.ObjectMetaArgs{
+				Name: pulumi.String("selfsigned-issuer"),
+			},
+			OtherFields: kpulumi.UntypedArgs{
+				"spec": pulumi.Map{
+					"selfSigned": pulumi.Map{},
+				},
+			},
+		},
+			pulumi.DependsOn([]pulumi.Resource{cm}),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("Error encountered during the creation of self-signed issuer: %v", err)
+		}
 
+		cert, err := apiextensions.NewCustomResource(ctx, "root-ca", &apiextensions.CustomResourceArgs{
+			ApiVersion: pulumi.String("cert-manager.io/v1"),
+			Kind:       pulumi.String("Certificate"),
+			Metadata: &metav1.ObjectMetaArgs{
+				Name:      pulumi.String("root-ca-cert"),
+				Namespace: pulumi.String(CERT_MANAGER_NAMESPACE),
+			},
+			OtherFields: map[string]any{
+				"spec": map[string]any{
+					"isCA":       true,
+					"commonName": "internal-root-selfsigned-ca",
+					"secretName": "root-secret",
+					"privateKey": map[string]any{
+						"algorithm": "ECDSA",
+						"size":      256,
+					},
+					"issuerRef": map[string]any{
+						"name":  "selfsigned-issuer",
+						"kind":  "ClusterIssuer",
+						"group": "cert-manager.io",
+					},
+				},
+			},
+		}, pulumi.DependsOn([]pulumi.Resource{ssi}))
+
+		if err != nil {
+			return nil, fmt.Errorf("Error encountered during the creation of the self signed ca: %v", err)
+		}
+		_, err = apiextensions.NewCustomResource(ctx, "internal-ca-issuer", &apiextensions.CustomResourceArgs{
+			ApiVersion: pulumi.String("cert-manager.io/v1"),
+			Kind:       pulumi.String("ClusterIssuer"),
+			Metadata: &metav1.ObjectMetaArgs{
+				Name: pulumi.String("internal-ca-issuer"),
+			},
+			OtherFields: map[string]any{
+				"spec": map[string]any{
+					"ca": map[string]any{
+						"secretName": "root-secret",
+					},
+				},
+			},
+		}, pulumi.DependsOn([]pulumi.Resource{cert}))
+		if err != nil {
+			return nil, fmt.Errorf("Error encountered during the creation of the ca issuer: %v", err)
+		}
 	}
-
 	return comp, nil
 }

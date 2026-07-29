@@ -36,8 +36,9 @@ func main() {
 		}
 
 		certManager, err := k8s.SetupCertManagerComponents(ctx, "cert-manager", &k8s.CertManagerArgs{
-			EnableGatewayAPI: nc.InstallGatewayApiCrds,
-			InstallCrds:      true,
+			EnableGatewayAPI:  nc.InstallGatewayApiCrds,
+			InstallCrds:       true,
+			SelfSignedCaSetup: true,
 		})
 		if err != nil {
 			return err
