@@ -4,6 +4,11 @@ service:
 
 replicaCount: 2
 
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
 prometheus:
   service:
     enabled: true
@@ -18,25 +23,33 @@ prometheus:
     interval: ""
     selector: {}
 
-# Default zone is what Kubernetes recommends:
-# https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/#coredns-configmap-options
 servers:
   - zones:
-      - zone: .
+      - zone: home.arpa
         use_tcp: true
     port: 53
-    # -- expose the service on a different port
-    # servicePort: 5353
-    # If serviceType is nodePort you can specify nodePort here
-    # nodePort: 30053
-    # hostPort: 53
     plugins:
       - name: log
+      - name: forward
+        parameters: . 192.168.50.1
+      - name: errors
+  - zones:
+      - zone: internal
+        use_tcp: true
+    port: 53
+    plugins:
       - name: hosts
         configBlock: |-
           192.168.50.254 homelab.internal
           192.168.50.254 jellyfin.internal
           fallthrough
+      - name: errors
+  - zones:
+      - zone: .
+        use_tcp: true
+    port: 53
+    plugins:
+      - name: log
       - name: forward
         parameters: . 1.1.1.1
       - name: errors
@@ -54,38 +67,3 @@ servers:
       - name: loop
       - name: reload
       - name: loadbalance
-
-# Complete example with all the options:
-# - zones:                 # the `zones` block can be left out entirely, defaults to "."
-#   - zone: hello.world.   # optional, defaults to "."
-#     scheme: tls://       # optional, defaults to "" (which equals "dns://" in CoreDNS)
-#   - zone: foo.bar.
-#     scheme: dns://
-#     use_tcp: true        # set this parameter to optionally expose the port on tcp as well as udp for the DNS protocol
-#                          # Note that this will not work if you are also exposing tls or grpc on the same server
-#   port: 12345            # optional, defaults to "" (which equals 53 in CoreDNS)
-#   plugins:               # the plugins to use for this server block
-#   - name: kubernetes     # name of plugin, if used multiple times ensure that the plugin supports it!
-#     parameters: foo bar  # list of parameters after the plugin
-#     configBlock: |-      # if the plugin supports extra block style config, supply it here
-#       hello world
-#       foo bar
-
-# Extra configuration that is applied outside of the default zone block.
-# Example to include additional config files, which may come from extraVolumes:
-# extraConfig:
-#   import:
-#     parameters: /opt/coredns/*.conf
-extraConfig: {}
-
-# extraVolumes:
-#   - name: private-dns
-#     configMap:
-#       name: private-dns-hosts
-# optional array of mount points for extraVolumes
-# extraVolumeMounts: []
-# - name: some-volume-name
-#   mountPath: /etc/wherever
-# extraVolumeMounts:
-#   - name: private-dns
-#     mountPath: /etc/private-dns
