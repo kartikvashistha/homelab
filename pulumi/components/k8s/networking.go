@@ -13,23 +13,23 @@ import (
 )
 
 const (
-	GATEWAYAPI_CRDS_VERSION = "v1.4.0"
+	GATEWAYAPI_CRDS_VERSION = "v1.6.0"
 
 	METALLB_RELEASE_NAME  = "metallb"
 	METALLB_CHART_NAME    = "metallb"
 	METALLB_NAMESPACE     = "metallb-system"
 	METALLB_CHART_REPO    = "https://metallb.github.io/metallb"
-	METALLB_CHART_VERSION = "0.15.3"
+	METALLB_CHART_VERSION = "0.16.1"
 
 	ISTIO_NAMESPACE     = "istio-system"
-	ISTIO_CHART_REPO    = "https://istio-release.storage.googleapis.com/charts"
-	ISTIO_CHART_VERSION = "1.29.1"
+	ISTIO_CHART_REPO    = "https://blob.istio.io/istio-release/charts"
+	ISTIO_CHART_VERSION = "1.31.0"
 
 	KIALI_OPERATOR_RELEASE_NAME = "kiali-operator"
 	KIALI_OPERATOR_CHART_NAME   = "kiali-operator"
 	KIALI_OPERATOR_NAMESPACE    = "kiali-operator"
 	KIALI_OPERATOR_REPO         = "https://kiali.org/helm-charts"
-	KIALI_OPERATOR_VERSION      = "2.23.0"
+	KIALI_OPERATOR_VERSION      = "2.32.0"
 )
 
 type NetworkComponent struct {

@@ -14,7 +14,7 @@ const (
 	LONGHORN_CHART        = "longhorn"
 	LONGHORN_NAMESPACE    = "longhorn-system"
 	LONGHORN_REPO         = "https://charts.longhorn.io"
-	LONGHORN_VERSION      = "1.12.0"
+	LONGHORN_VERSION      = "1.12.1"
 )
 
 type StorageClassComponent struct {

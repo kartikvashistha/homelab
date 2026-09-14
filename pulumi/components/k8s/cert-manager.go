@@ -16,7 +16,7 @@ const (
 	CERT_MANAGER_CHART_NAME    = "cert-manager"
 	CERT_MANAGER_NAMESPACE     = "cert-manager"
 	CERT_MANAGER_CHART_REPO    = "https://charts.jetstack.io"
-	CERT_MANAGER_CHART_VERSION = "1.20.0"
+	CERT_MANAGER_CHART_VERSION = "1.21.2"
 )
 
 type CertManagerComponent struct {
