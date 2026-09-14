@@ -13,16 +13,16 @@ config:
       chart: coredns
       namespace: coredns
       repo: "https://coredns.github.io/helm"
-      version: "1.45.2"
+      version: "1.47.1"
 
     - releaseName: headlamp
       chart: headlamp
       namespace: headlamp
       repo: "https://kubernetes-sigs.github.io/headlamp"
-      version: 0.41.0
+      version: 0.45.0
 
     - releaseName: metrics-server
       chart: metrics-server
       namespace: kube-system
       repo: "https://kubernetes-sigs.github.io/metrics-server"
-      version: 3.13.0
+      version: 3.14.0
