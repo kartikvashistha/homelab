@@ -1,5 +1,5 @@
-config:
-  baseURL: "/headlamp"
+# config:
+# baseURL: "/headlamp"
 #   pluginsDir: /build/plugins
 # initContainers:
 #   - command:
