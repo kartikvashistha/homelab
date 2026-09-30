@@ -1,8 +1,6 @@
 package k8s
 
 import (
-	// "encoding/json"
-
 	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
@@ -11,9 +9,11 @@ import (
 
 type GatewayComponent struct {
 	pulumi.ResourceState
+
+	Name      pulumi.StringOutput
+	Namespace pulumi.StringOutput
 }
 
-// GatewayArgs uses concrete Go types so `cfg.RequireObject` can unmarshal it
 type GatewayArgs struct {
 	Name      string `json:"name"`
 	ClassName string `json:"className"`
@@ -27,19 +27,8 @@ func NewGatewayComponent(ctx *pulumi.Context, name string, args *GatewayArgs, op
 		return nil, err
 	}
 
-	// Unmarshal listeners struct slice into dynamic map structure
-	// bytes, err := json.Marshal(args.Listeners)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// var listenersRaw []map[string]any
-	// if err := json.Unmarshal(bytes, &listenersRaw); err != nil {
-	// 	return nil, err
-	// }
-
 	spec := pulumi.Map{
 		"gatewayClassName": pulumi.String(args.ClassName),
-		// "listeners":        pulumi.ToMapArray(listenersRaw),
 		"listeners": pulumi.MapArray{
 			pulumi.Map{
 				"name":     pulumi.String("https"),
@@ -55,7 +44,7 @@ func NewGatewayComponent(ctx *pulumi.Context, name string, args *GatewayArgs, op
 					"mode": pulumi.String("Terminate"),
 					"certificateRefs": pulumi.MapArray{
 						pulumi.Map{
-							"name": pulumi.String("homelab-internal-tls"), // <-- get this as an output from cm
+							"name": pulumi.String(args.Name + "-tls-cert"),
 						},
 					},
 				},
@@ -69,7 +58,7 @@ func NewGatewayComponent(ctx *pulumi.Context, name string, args *GatewayArgs, op
 		}
 		return "default"
 	}
-	_, err = apiextensions.NewCustomResource(ctx, name+"-cr", &apiextensions.CustomResourceArgs{
+	gateway, err := apiextensions.NewCustomResource(ctx, name+"-cr", &apiextensions.CustomResourceArgs{
 		ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 		Kind:       pulumi.String("Gateway"),
 		Metadata: &metav1.ObjectMetaArgs{
@@ -83,8 +72,17 @@ func NewGatewayComponent(ctx *pulumi.Context, name string, args *GatewayArgs, op
 		OtherFields: kpulumi.UntypedArgs{
 			"spec": spec,
 		},
-	}, append(opts, pulumi.Parent(comp))...) // Pass parent & opts cleanly
+	}, append(opts, pulumi.Parent(comp))...)
 	if err != nil {
+		return nil, err
+	}
+	comp.Name = gateway.Metadata.Name().Elem()
+	comp.Namespace = gateway.Metadata.Namespace().Elem()
+
+	if err := ctx.RegisterResourceOutputs(comp, pulumi.Map{
+		"name":      comp.Name,
+		"namespace": comp.Namespace,
+	}); err != nil {
 		return nil, err
 	}
 
