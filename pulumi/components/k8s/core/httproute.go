@@ -1,4 +1,4 @@
-package k8s
+package core
 
 import (
 	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"

@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kartikvashistha/homelab/pulumi/components/k8s"
+	"github.com/kartikvashistha/homelab/pulumi/components/k8s/core"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
@@ -25,27 +25,27 @@ func main() {
 		cfg := config.New(ctx, "")
 		kubectx := config.New(ctx, "kubernetes").Require("context")
 
-		var nc k8s.NetworkComponentArgs
+		var nc core.NetworkComponentArgs
 		cfg.RequireObject("networking", &nc)
 
-		var g k8s.GatewayArgs
+		var g core.GatewayArgs
 		cfg.RequireObject("gateway", &g)
 
 		var h []HelmConfig
 		cfg.RequireObject("helm", &h)
 
 		// 2. Core Infrastructure Components
-		networkComponent, err := k8s.SetupNetworkingComponents(ctx, "core-networking", &nc)
+		networkComponent, err := core.SetupNetworkingComponents(ctx, "core-networking", &nc)
 		if err != nil {
 			return fmt.Errorf("networking setup failed: %w", err)
 		}
 
-		_, err = k8s.NewStorageClassComponent(ctx, "storageclass-setup", &k8s.StorageClassArgs{})
+		_, err = core.NewStorageClassComponent(ctx, "storageclass-setup", &core.StorageClassArgs{})
 		if err != nil {
 			return fmt.Errorf("storage class setup failed: %w", err)
 		}
 
-		certManager, err := k8s.SetupCertManagerComponents(ctx, "cert-manager", &k8s.CertManagerArgs{
+		certManager, err := core.SetupCertManagerComponents(ctx, "cert-manager", &core.CertManagerArgs{
 			EnableGatewayAPI:  nc.InstallGatewayApiCrds,
 			InstallCrds:       true,
 			SelfSignedCaSetup: true,
@@ -58,7 +58,7 @@ func main() {
 		infraDeps := pulumi.DependsOn([]pulumi.Resource{networkComponent, certManager})
 
 		// 3. Cluster Gateway
-		_, err = k8s.NewGatewayComponent(ctx, "cluster-gateway", &g, infraDeps)
+		_, err = core.NewGatewayComponent(ctx, "cluster-gateway", &g, infraDeps)
 		if err != nil {
 			return fmt.Errorf("gateway component setup failed: %w", err)
 		}
