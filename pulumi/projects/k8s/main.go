@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kartikvashistha/homelab/pulumi/components/k8s/apps"
 	"github.com/kartikvashistha/homelab/pulumi/components/k8s/core"
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/yaml"
@@ -99,7 +100,7 @@ func main() {
 		// 3. Cluster Gateway
 		// ------------------------------------------------------------
 
-		_, err = core.NewGatewayComponent(
+		gateway, err := core.NewGatewayComponent(
 			ctx,
 			"cluster-gateway",
 			&g,
@@ -200,17 +201,16 @@ func main() {
 		// 6. Applications
 		// ------------------------------------------------------------
 
-		// if err := apps.Deploy(
-		// 	ctx,
-		// 	k8sCfg,
-		// 	gateway,
-		// 	storage,
-		// ); err != nil {
-		// 	return fmt.Errorf(
-		// 		"application deployment failed: %w",
-		// 		err,
-		// 	)
-		// }
+		if err := apps.Deploy(
+			ctx,
+			k8sCfg,
+			gateway,
+		); err != nil {
+			return fmt.Errorf(
+				"application deployment failed: %w",
+				err,
+			)
+		}
 
 		return nil
 	})

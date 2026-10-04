@@ -15,40 +15,20 @@ type App interface {
 		ctx *pulumi.Context,
 		cfg *config.Config,
 		gateway *core.GatewayComponent,
-		storage *core.StorageClassComponent,
 	) error
 }
 
 var registry = map[string]App{
 	"jellyfin": JellyfinApp{},
-
-	// Future applications:
 	// "headlamp": HeadlampApp{},
 	// "kiali":    KialiApp{},
 }
 
 // Deploy discovers applications from the k8s:apps configuration.
-//
-// The Pulumi configuration is structured like:
-//
-//	k8s:apps:
-//	  jellyfin:
-//	    address:
-//	      - 192.168.50.89
-//	    targetPort: 8899
-//	    hostnames:
-//	      - jellyfin.internal
-//
-// Therefore we must read the "apps" object. Using:
-//
-//	cfg.Get("apps:jellyfin")
-//
-// does not correctly detect an object-valued nested configuration.
 func Deploy(
 	ctx *pulumi.Context,
 	cfg *config.Config,
 	gateway *core.GatewayComponent,
-	storage *core.StorageClassComponent,
 ) error {
 	var configuredApps map[string]map[string]any
 
@@ -71,7 +51,6 @@ func Deploy(
 			ctx,
 			cfg,
 			gateway,
-			storage,
 		); err != nil {
 			return fmt.Errorf(
 				"deploy %q: %w",

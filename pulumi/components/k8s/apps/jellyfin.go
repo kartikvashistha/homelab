@@ -35,7 +35,6 @@ func NewJellyfinComponent(
 	name string,
 	args *JellyfinArgs,
 	gateway *core.GatewayComponent,
-	storage *core.StorageClassComponent,
 	opts ...pulumi.ResourceOption,
 ) (*JellyfinComponent, error) {
 	comp := &JellyfinComponent{}
@@ -45,7 +44,6 @@ func NewJellyfinComponent(
 		opts,
 		pulumi.DependsOn([]pulumi.Resource{
 			gateway,
-			storage,
 		}),
 	)
 
@@ -66,7 +64,6 @@ func NewJellyfinComponent(
 		pulumi.Parent(comp),
 		pulumi.DependsOn([]pulumi.Resource{
 			gateway,
-			storage,
 		}),
 	}
 
@@ -204,7 +201,6 @@ func (JellyfinApp) Deploy(
 	ctx *pulumi.Context,
 	cfg *config.Config,
 	gateway *core.GatewayComponent,
-	storage *core.StorageClassComponent,
 ) error {
 	// Read the entire k8s:apps object.
 	var appsConfig map[string]JellyfinArgs
@@ -255,11 +251,6 @@ func (JellyfinApp) Deploy(
 		"jellyfin",
 		&args,
 		gateway,
-		storage,
-
-		// Keep Jellyfin under the gateway component in the
-		// Pulumi resource hierarchy.
-		pulumi.Parent(gateway),
 	)
 
 	return err
