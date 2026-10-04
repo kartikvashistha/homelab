@@ -24,17 +24,10 @@ const (
 	ISTIO_NAMESPACE     = "istio-system"
 	ISTIO_CHART_REPO    = "https://blob.istio.io/istio-release/charts"
 	ISTIO_CHART_VERSION = "1.31.0"
-
-	KIALI_OPERATOR_RELEASE_NAME = "kiali-operator"
-	KIALI_OPERATOR_CHART_NAME   = "kiali-operator"
-	KIALI_OPERATOR_NAMESPACE    = "kiali-operator"
-	KIALI_OPERATOR_REPO         = "https://kiali.org/helm-charts"
-	KIALI_OPERATOR_VERSION      = "2.32.0"
 )
 
 type NetworkComponent struct {
 	pulumi.ResourceState
-	// Endpoint pulumi.StringOutput `pulumi:"endpoint"`
 }
 
 type Metallb struct {
@@ -54,11 +47,8 @@ func SetupNetworkingComponents(ctx *pulumi.Context, name string, args *NetworkCo
 		return nil, err
 	}
 
-	// var gatewayapicrds kustomizev2.Directory
-
 	if args.InstallGatewayApiCrds {
 		_, err := kustomizev2.NewDirectory(ctx, "gatewayapicrds", &kustomizev2.DirectoryArgs{
-			// gatewayapicrds, err := kustomizev2.NewDirectory(ctx, "gatewayapicrds", &kustomizev2.DirectoryArgs{
 			Directory: pulumi.String(fmt.Sprintf("github.com/kubernetes-sigs/gateway-api/config/crd?ref=%s", GATEWAYAPI_CRDS_VERSION)),
 		}, pulumi.Parent(comp))
 		if err != nil {
@@ -90,16 +80,15 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 			return fmt.Errorf("Error encountered during the creation of metallb's namespace!")
 		}
 
-		metallbRelease, err := helmv3.NewRelease(
-			ctx, METALLB_RELEASE_NAME, &helmv3.ReleaseArgs{
-				Chart: pulumi.String(METALLB_CHART_NAME),
-				RepositoryOpts: &helmv3.RepositoryOptsArgs{
-					Repo: pulumi.String(METALLB_CHART_REPO),
-				},
-				Version:   pulumi.String(METALLB_CHART_VERSION),
-				Name:      pulumi.String(METALLB_RELEASE_NAME),
-				Namespace: pulumi.String(METALLB_NAMESPACE),
+		metallbRelease, err := helmv3.NewRelease(ctx, METALLB_RELEASE_NAME, &helmv3.ReleaseArgs{
+			Chart: pulumi.String(METALLB_CHART_NAME),
+			RepositoryOpts: &helmv3.RepositoryOptsArgs{
+				Repo: pulumi.String(METALLB_CHART_REPO),
 			},
+			Version:   pulumi.String(METALLB_CHART_VERSION),
+			Name:      pulumi.String(METALLB_RELEASE_NAME),
+			Namespace: pulumi.String(METALLB_NAMESPACE),
+		},
 			pulumi.DependsOn([]pulumi.Resource{metallbNs}),
 			pulumi.Parent(nc),
 		)
@@ -107,20 +96,19 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 			return fmt.Errorf("Error encountered during the creation of metallb's Helm Release!")
 		}
 
-		metallbIpAddressPool, err := apiextensions.NewCustomResource(
-			ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
-				ApiVersion: pulumi.String("metallb.io/v1beta1"),
-				Kind:       pulumi.String("IPAddressPool"),
-				Metadata: &metav1.ObjectMetaArgs{
-					Name:      pulumi.String("first-pool"),
-					Namespace: pulumi.String("metallb-system"),
-				},
-				OtherFields: kpulumi.UntypedArgs{
-					"spec": pulumi.Map{
-						"addresses": pulumi.ToStringArray(m.AddressPool),
-					},
+		metallbIpAddressPool, err := apiextensions.NewCustomResource(ctx, "metallbIpAddressPool", &apiextensions.CustomResourceArgs{
+			ApiVersion: pulumi.String("metallb.io/v1beta1"),
+			Kind:       pulumi.String("IPAddressPool"),
+			Metadata: &metav1.ObjectMetaArgs{
+				Name:      pulumi.String("first-pool"),
+				Namespace: pulumi.String("metallb-system"),
+			},
+			OtherFields: kpulumi.UntypedArgs{
+				"spec": pulumi.Map{
+					"addresses": pulumi.ToStringArray(m.AddressPool),
 				},
 			},
+		},
 			pulumi.DependsOn([]pulumi.Resource{metallbRelease}),
 			pulumi.Parent(nc),
 		)
@@ -128,15 +116,14 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 			return err
 		}
 
-		_, err = apiextensions.NewCustomResource(
-			ctx, "metallbL2Advertisement", &apiextensions.CustomResourceArgs{
-				ApiVersion: pulumi.String("metallb.io/v1beta1"),
-				Kind:       pulumi.String("L2Advertisement"),
-				Metadata: &metav1.ObjectMetaArgs{
-					Name:      pulumi.String("advertisement"),
-					Namespace: pulumi.String("metallb-system"),
-				},
+		_, err = apiextensions.NewCustomResource(ctx, "metallbL2Advertisement", &apiextensions.CustomResourceArgs{
+			ApiVersion: pulumi.String("metallb.io/v1beta1"),
+			Kind:       pulumi.String("L2Advertisement"),
+			Metadata: &metav1.ObjectMetaArgs{
+				Name:      pulumi.String("advertisement"),
+				Namespace: pulumi.String("metallb-system"),
 			},
+		},
 			pulumi.DependsOn([]pulumi.Resource{metallbIpAddressPool}),
 			pulumi.Parent(nc),
 		)
@@ -153,7 +140,6 @@ func metallb(ctx *pulumi.Context, m *Metallb, nc *NetworkComponent) error {
 // (1) Service mesh
 // (2) GatewayClass &
 // (3) More istio stuff that I dont fully understand yet
-// (4) Kiali Operator
 func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 	istioNs, err := corev1.NewNamespace(ctx, "istio-ns", &corev1.NamespaceArgs{
 		Metadata: &metav1.ObjectMetaArgs{
@@ -236,37 +222,6 @@ func setupIstio(ctx *pulumi.Context, nc *NetworkComponent) error {
 			},
 		},
 	}, pulumi.Parent(nc), pulumi.DependsOn([]pulumi.Resource{istioNs}))
-
-	kialiOperatorNs, err := corev1.NewNamespace(ctx, KIALI_OPERATOR_NAMESPACE+"-ns", &corev1.NamespaceArgs{
-		Metadata: &metav1.ObjectMetaArgs{
-			Name: pulumi.String(KIALI_OPERATOR_RELEASE_NAME),
-		},
-	}, pulumi.Parent(nc))
-	if err != nil {
-		return err
-	}
-	_, err = helmv3.NewRelease(ctx, "kiali-operator", &helmv3.ReleaseArgs{
-		Chart: pulumi.String(KIALI_OPERATOR_CHART_NAME),
-		RepositoryOpts: &helmv3.RepositoryOptsArgs{
-			Repo: pulumi.String(KIALI_OPERATOR_REPO),
-		},
-		Name:      pulumi.String(KIALI_OPERATOR_RELEASE_NAME),
-		Namespace: pulumi.String(KIALI_OPERATOR_RELEASE_NAME),
-		Version:   pulumi.String(KIALI_OPERATOR_VERSION),
-		Values: pulumi.Map{
-			"cr": pulumi.Map{
-				"create":    pulumi.Bool(true),
-				"namespace": pulumi.String(ISTIO_NAMESPACE),
-				"spec": pulumi.Map{
-					"auth": pulumi.Map{
-						"strategy": pulumi.String("anonymous"),
-					},
-				},
-			},
-		},
-	},
-		pulumi.Parent(nc),
-		pulumi.DependsOn([]pulumi.Resource{istioNs, kialiOperatorNs}))
 
 	return nil
 }

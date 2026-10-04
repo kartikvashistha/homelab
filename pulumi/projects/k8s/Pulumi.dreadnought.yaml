@@ -39,3 +39,7 @@ config:
       targetPort: 8899
       hostnames:
         - jellyfin.internal
+
+    kiali:
+      hostnames:
+        - kiali.internal

@@ -20,8 +20,8 @@ type App interface {
 
 var registry = map[string]App{
 	"jellyfin": JellyfinApp{},
+	"kiali":    KialiApp{},
 	// "headlamp": HeadlampApp{},
-	// "kiali":    KialiApp{},
 }
 
 // Deploy discovers applications from the k8s:apps configuration.
