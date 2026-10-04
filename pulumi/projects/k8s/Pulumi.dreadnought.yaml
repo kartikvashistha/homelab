@@ -31,3 +31,11 @@ config:
       namespace: kube-system
       repo: "https://kubernetes-sigs.github.io/metrics-server"
       version: 3.14.0
+
+  k8s:apps:
+    jellyfin:
+      address:
+        - 192.168.50.89
+      targetPort: 8899
+      hostnames:
+        - jellyfin.internal

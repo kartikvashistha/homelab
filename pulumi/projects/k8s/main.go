@@ -22,103 +22,221 @@ type HelmConfig struct {
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		cfg := config.New(ctx, "")
-		kubectx := config.New(ctx, "kubernetes").Require("context")
+		k8sCfg := config.New(ctx, "k8s")
+		kubernetesCfg := config.New(ctx, "kubernetes")
+
+		kubectx := kubernetesCfg.Require("context")
+
+		// ------------------------------------------------------------
+		// 1. Configuration
+		// ------------------------------------------------------------
 
 		var nc core.NetworkComponentArgs
-		cfg.RequireObject("networking", &nc)
+		k8sCfg.RequireObject("networking", &nc)
 
 		var g core.GatewayArgs
-		cfg.RequireObject("gateway", &g)
+		k8sCfg.RequireObject("gateway", &g)
 
 		var h []HelmConfig
-		cfg.RequireObject("helm", &h)
+		k8sCfg.RequireObject("helm", &h)
 
-		// 2. Core Infrastructure Components
-		networkComponent, err := core.SetupNetworkingComponents(ctx, "core-networking", &nc)
+		// ------------------------------------------------------------
+		// 2. Core infrastructure
+		// ------------------------------------------------------------
+
+		networkComponent, err := core.SetupNetworkingComponents(
+			ctx,
+			"core-networking",
+			&nc,
+		)
 		if err != nil {
-			return fmt.Errorf("networking setup failed: %w", err)
+			return fmt.Errorf(
+				"networking setup failed: %w",
+				err,
+			)
 		}
 
-		_, err = core.NewStorageClassComponent(ctx, "storageclass-setup", &core.StorageClassArgs{})
+		// Keep the storage component so applications can explicitly
+		// depend on it.
+		_, err = core.NewStorageClassComponent(
+			ctx,
+			"storageclass-setup",
+			&core.StorageClassArgs{},
+		)
 		if err != nil {
-			return fmt.Errorf("storage class setup failed: %w", err)
+			return fmt.Errorf(
+				"storage class setup failed: %w",
+				err,
+			)
 		}
 
-		certManager, err := core.SetupCertManagerComponents(ctx, "cert-manager", &core.CertManagerArgs{
-			EnableGatewayAPI:  nc.InstallGatewayApiCrds,
-			InstallCrds:       true,
-			SelfSignedCaSetup: true,
-		}, pulumi.DependsOn([]pulumi.Resource{networkComponent}))
+		certManager, err := core.SetupCertManagerComponents(
+			ctx,
+			"cert-manager",
+			&core.CertManagerArgs{
+				EnableGatewayAPI:  nc.InstallGatewayApiCrds,
+				InstallCrds:       true,
+				SelfSignedCaSetup: true,
+			},
+			pulumi.DependsOn([]pulumi.Resource{
+				networkComponent,
+			}),
+		)
 		if err != nil {
-			return fmt.Errorf("cert-manager setup failed: %w", err)
+			return fmt.Errorf(
+				"cert-manager setup failed: %w",
+				err,
+			)
 		}
 
-		// Reusable core dependency handle
-		infraDeps := pulumi.DependsOn([]pulumi.Resource{networkComponent, certManager})
+		// Shared dependency for cluster-level resources.
+		infraDeps := pulumi.DependsOn([]pulumi.Resource{
+			networkComponent,
+			certManager,
+		})
 
+		// ------------------------------------------------------------
 		// 3. Cluster Gateway
-		_, err = core.NewGatewayComponent(ctx, "cluster-gateway", &g, infraDeps)
+		// ------------------------------------------------------------
+
+		_, err = core.NewGatewayComponent(
+			ctx,
+			"cluster-gateway",
+			&g,
+			infraDeps,
+		)
 		if err != nil {
-			return fmt.Errorf("gateway component setup failed: %w", err)
+			return fmt.Errorf(
+				"gateway component setup failed: %w",
+				err,
+			)
 		}
 
-		// 4. Helm Releases (with safe override checks)
+		// ------------------------------------------------------------
+		// 4. Helm releases
+		// ------------------------------------------------------------
+
 		for _, v := range h {
-			overridePath := fmt.Sprintf("./clusters/%s/helm-overrides/%s/values.yaml", kubectx, v.ReleaseName)
+			overridePath := fmt.Sprintf(
+				"./clusters/%s/helm-overrides/%s/values.yaml",
+				kubectx,
+				v.ReleaseName,
+			)
 
 			var valueFiles pulumi.AssetOrArchiveArray
+
 			if _, err := os.Stat(overridePath); err == nil {
-				valueFiles = pulumi.AssetOrArchiveArray{pulumi.NewFileAsset(overridePath)}
+				valueFiles = pulumi.AssetOrArchiveArray{
+					pulumi.NewFileAsset(overridePath),
+				}
 			} else if !os.IsNotExist(err) {
-				return fmt.Errorf("error reading helm values override for %s: %w", v.ReleaseName, err)
+				return fmt.Errorf(
+					"error reading helm values override for %s: %w",
+					v.ReleaseName,
+					err,
+				)
 			}
 
-			_, err = helmv3.NewRelease(ctx, v.ReleaseName, &helmv3.ReleaseArgs{
-				Name:            pulumi.String(v.ReleaseName),
-				Chart:           pulumi.String(v.Chart),
-				Namespace:       pulumi.String(v.Namespace),
-				Version:         pulumi.String(v.Version),
-				CreateNamespace: pulumi.Bool(true),
-				RepositoryOpts: &helmv3.RepositoryOptsArgs{
-					Repo: pulumi.String(v.Repo),
+			_, err = helmv3.NewRelease(
+				ctx,
+				v.ReleaseName,
+				&helmv3.ReleaseArgs{
+					Name:            pulumi.String(v.ReleaseName),
+					Chart:           pulumi.String(v.Chart),
+					Namespace:       pulumi.String(v.Namespace),
+					Version:         pulumi.String(v.Version),
+					CreateNamespace: pulumi.Bool(true),
+					RepositoryOpts: &helmv3.RepositoryOptsArgs{
+						Repo: pulumi.String(v.Repo),
+					},
+					ValueYamlFiles: valueFiles,
 				},
-				ValueYamlFiles: valueFiles,
-			}, infraDeps)
+				infraDeps,
+			)
 			if err != nil {
-				return fmt.Errorf("failed creating helm release '%s': %w", v.ReleaseName, err)
+				return fmt.Errorf(
+					"failed creating helm release %q: %w",
+					v.ReleaseName,
+					err,
+				)
 			}
 		}
 
-		// 5. Manifests Group (safely expands globs)
-		manifestFiles, err := findManifests(fmt.Sprintf("./clusters/%s/manifests", kubectx))
+		// ------------------------------------------------------------
+		// 5. Cluster manifests
+		// ------------------------------------------------------------
+
+		manifestFiles, err := findManifests(
+			fmt.Sprintf(
+				"./clusters/%s/manifests",
+				kubectx,
+			),
+		)
 		if err != nil {
-			return fmt.Errorf("failed searching manifest directory: %w", err)
+			return fmt.Errorf(
+				"failed searching manifest directory: %w",
+				err,
+			)
 		}
 
 		if len(manifestFiles) > 0 {
-			_, err = yaml.NewConfigGroup(ctx, "manifests", &yaml.ConfigGroupArgs{
-				Files: manifestFiles,
-			}, infraDeps)
+			_, err = yaml.NewConfigGroup(
+				ctx,
+				"manifests",
+				&yaml.ConfigGroupArgs{
+					Files: manifestFiles,
+				},
+				infraDeps,
+			)
 			if err != nil {
-				return fmt.Errorf("failed applying manifests: %w", err)
+				return fmt.Errorf(
+					"failed applying manifests: %w",
+					err,
+				)
 			}
 		}
+
+		// ------------------------------------------------------------
+		// 6. Applications
+		// ------------------------------------------------------------
+
+		// if err := apps.Deploy(
+		// 	ctx,
+		// 	k8sCfg,
+		// 	gateway,
+		// 	storage,
+		// ); err != nil {
+		// 	return fmt.Errorf(
+		// 		"application deployment failed: %w",
+		// 		err,
+		// 	)
+		// }
 
 		return nil
 	})
 }
 
-// Helper function to resolve glob paths without throwing engine errors if empty
+// findManifests resolves YAML files in the cluster's manifest
+// directory.
+//
+// Empty directories are valid and simply result in no manifests
+// being created.
 func findManifests(dir string) ([]string, error) {
 	var files []string
-	patterns := []string{"*.yaml", "*.yml"}
 
-	for _, p := range patterns {
-		matches, err := filepath.Glob(filepath.Join(dir, p))
+	patterns := []string{
+		"*.yaml",
+		"*.yml",
+	}
+
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(
+			filepath.Join(dir, pattern),
+		)
 		if err != nil {
 			return nil, err
 		}
+
 		files = append(files, matches...)
 	}
 
