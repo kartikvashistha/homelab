@@ -8,7 +8,6 @@ import (
 	discoveryv1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/discovery/v1"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 type JellyfinComponent struct {
@@ -22,9 +21,9 @@ type JellyfinArgs struct {
 }
 
 const (
-	JELLYFIN_NAMESPACE = "jellyfin"
-	JELLYFIN_SVC_NAME  = "jellyfin-svc"
-	JELLYFIN_SVC_PORT  = 80
+	JELLYFIN_NAMESPACE string = "jellyfin"
+	JELLYFIN_SVC_NAME  string = "jellyfin-svc"
+	JELLYFIN_SVC_PORT         = 80
 
 	HTTP pulumi.String = pulumi.String("http")
 	TCP  pulumi.String = pulumi.String("TCP")
@@ -168,17 +167,14 @@ func NewJellyfinComponent(
 	// HTTPRoute
 	// ------------------------------------------------------------
 
-	_, err = core.NewHTTPRouteComponent(
-		ctx,
-		name+"-http-route",
-		&core.HTTPRouteArgs{
-			Name:      pulumi.String(name + "-route"),
-			Namespace: ns.Metadata.Name(),
-			Hostnames: pulumi.ToStringArray(args.Hostnames),
-			Gateway:   gateway,
-			Service:   svc.Metadata.Name(),
-			Port:      JELLYFIN_SVC_PORT,
-		},
+	_, err = core.NewHTTPRouteComponent(ctx, name+"-http-route", &core.HTTPRouteArgs{
+		Name:      name + "-route",
+		Namespace: svc.Metadata.Namespace().Elem(),
+		Hostnames: args.Hostnames,
+		Gateway:   gateway,
+		Service:   JELLYFIN_SVC_NAME,
+		Port:      JELLYFIN_SVC_PORT,
+	},
 		childOpts...,
 	)
 	if err != nil {
@@ -197,61 +193,27 @@ func (JellyfinApp) Name() string {
 	return "jellyfin"
 }
 
-func (JellyfinApp) Deploy(
-	ctx *pulumi.Context,
-	cfg *config.Config,
-	gateway *core.GatewayComponent,
-) error {
-	// Read the entire k8s:apps object.
-	var appsConfig map[string]JellyfinArgs
-
-	if err := cfg.GetObject(
-		"apps",
-		&appsConfig,
-	); err != nil {
-		return fmt.Errorf(
-			"invalid k8s:apps configuration: %w",
-			err,
-		)
-	}
-
-	args, ok := appsConfig["jellyfin"]
+func (JellyfinApp) Deploy(ctx *pulumi.Context, gateway *core.GatewayComponent, args any) error {
+	appCfg, ok := args.(JellyfinArgs)
 	if !ok {
-		return nil
+		return fmt.Errorf("invalid config for jellyfin")
 	}
 
-	// ------------------------------------------------------------
-	// Validate configuration
-	// ------------------------------------------------------------
-
-	if len(args.Address) == 0 {
-		return fmt.Errorf(
-			"jellyfin address must contain at least one address",
-		)
+	if len(appCfg.Hostnames) == 0 {
+		return fmt.Errorf("jellyfin requires at least one hostname")
 	}
 
-	if args.TargetPort <= 0 || args.TargetPort > 65535 {
-		return fmt.Errorf(
-			"jellyfin targetPort must be between 1 and 65535",
-		)
+	if len(appCfg.Address) == 0 {
+		return fmt.Errorf("jellyfin requires at least one backend address")
 	}
 
-	if len(args.Hostnames) == 0 {
-		return fmt.Errorf(
-			"jellyfin hostnames must contain at least one hostname",
-		)
+	if appCfg.TargetPort < 1 || appCfg.TargetPort > 65535 {
+		return fmt.Errorf("jellyfin targetPort must be between 1 and 65535")
 	}
 
-	// ------------------------------------------------------------
-	// Create Jellyfin
-	// ------------------------------------------------------------
+	if _, err := NewJellyfinComponent(ctx, "jellyfin", &appCfg, gateway); err != nil {
+		return fmt.Errorf("create jellyfin component: %w", err)
+	}
 
-	_, err := NewJellyfinComponent(
-		ctx,
-		"jellyfin",
-		&args,
-		gateway,
-	)
-
-	return err
+	return nil
 }

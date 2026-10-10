@@ -42,6 +42,8 @@ servers:
         configBlock: |-
           192.168.50.254 homelab.internal
           192.168.50.254 jellyfin.internal
+          192.168.50.254 kiali.internal
+          192.168.50.254 headlamp.internal
           fallthrough
       - name: errors
   - zones:

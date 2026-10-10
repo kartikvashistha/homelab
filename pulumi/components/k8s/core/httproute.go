@@ -12,11 +12,11 @@ type HTTPRouteComponent struct {
 }
 
 type HTTPRouteArgs struct {
-	Name      pulumi.StringPtrInput
-	Namespace pulumi.StringPtrInput
-	Hostnames pulumi.StringArrayInput
+	Name      string
+	Namespace pulumi.StringInput
+	Hostnames []string
 	Gateway   *GatewayComponent
-	Service   pulumi.StringPtrInput
+	Service   string
 	Port      int
 }
 
@@ -44,7 +44,7 @@ func NewHTTPRouteComponent(
 				"namespace": args.Gateway.Namespace,
 			},
 		},
-		"hostnames": args.Hostnames,
+		"hostnames": pulumi.ToStringArray(args.Hostnames),
 		"rules": pulumi.MapArray{
 			pulumi.Map{
 				"matches": pulumi.MapArray{
@@ -57,7 +57,7 @@ func NewHTTPRouteComponent(
 				},
 				"backendRefs": pulumi.MapArray{
 					pulumi.Map{
-						"name": args.Service,
+						"name": pulumi.String(args.Service),
 						"port": pulumi.Int(args.Port),
 					},
 				},
@@ -72,7 +72,7 @@ func NewHTTPRouteComponent(
 			ApiVersion: pulumi.String("gateway.networking.k8s.io/v1"),
 			Kind:       pulumi.String("HTTPRoute"),
 			Metadata: &metav1.ObjectMetaArgs{
-				Name:      args.Name,
+				Name:      pulumi.String(args.Name),
 				Namespace: args.Namespace,
 			},
 			OtherFields: kpulumi.UntypedArgs{

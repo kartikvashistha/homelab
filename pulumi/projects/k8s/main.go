@@ -41,6 +41,9 @@ func main() {
 		var h []HelmConfig
 		k8sCfg.RequireObject("helm", &h)
 
+		var hr []core.HTTPRouteArgs
+		k8sCfg.RequireObject("httproute", &hr)
+
 		// ------------------------------------------------------------
 		// 2. Core infrastructure
 		// ------------------------------------------------------------
@@ -210,6 +213,14 @@ func main() {
 				"application deployment failed: %w",
 				err,
 			)
+		}
+
+		// ------------------------------------------------------------
+		// 7. HttpRoutes
+		// ------------------------------------------------------------
+		for _, v := range hr {
+			v.Gateway = gateway
+			_, err = core.NewHTTPRouteComponent(ctx, v.Name, &v)
 		}
 
 		return nil

@@ -1,62 +1,57 @@
 package apps
 
 import (
+	"encoding/json"
 	"fmt"
-
 	"github.com/kartikvashistha/homelab/pulumi/components/k8s/core"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
+var registry = []App{
+	KialiApp{},
+	JellyfinApp{},
+}
+
+type AppsConfig struct {
+	Kiali    KialiArgs    `json:"kiali"`
+	Jellyfin JellyfinArgs `json:"jellyfin"`
+}
+
 type App interface {
 	Name() string
-
 	Deploy(
 		ctx *pulumi.Context,
-		cfg *config.Config,
 		gateway *core.GatewayComponent,
+		args any,
 	) error
 }
 
-var registry = map[string]App{
-	"jellyfin": JellyfinApp{},
-	"kiali":    KialiApp{},
-	// "headlamp": HeadlampApp{},
-}
-
-// Deploy discovers applications from the k8s:apps configuration.
-func Deploy(
-	ctx *pulumi.Context,
-	cfg *config.Config,
-	gateway *core.GatewayComponent,
-) error {
-	var configuredApps map[string]map[string]any
-
-	if err := cfg.GetObject(
-		"apps",
-		&configuredApps,
-	); err != nil {
-		return fmt.Errorf(
-			"invalid k8s:apps configuration: %w",
-			err,
-		)
+func Deploy(ctx *pulumi.Context, cfg *config.Config, gateway *core.GatewayComponent) error {
+	var raw map[string]json.RawMessage
+	if err := cfg.GetObject("apps", &raw); err != nil {
+		return fmt.Errorf("read apps config: %w", err)
 	}
 
-	for name, app := range registry {
-		if _, ok := configuredApps[name]; !ok {
-			continue
-		}
+	var appsCfg AppsConfig
+	if err := cfg.GetObject("apps", &appsCfg); err != nil {
+		return fmt.Errorf("decode apps config: %w", err)
+	}
 
-		if err := app.Deploy(
-			ctx,
-			cfg,
-			gateway,
-		); err != nil {
-			return fmt.Errorf(
-				"deploy %q: %w",
-				name,
-				err,
-			)
+	for _, app := range registry {
+		switch app.Name() {
+		case "kiali":
+			if _, ok := raw["kiali"]; ok {
+				if err := app.Deploy(ctx, gateway, appsCfg.Kiali); err != nil {
+					return fmt.Errorf("deploy kiali: %w", err)
+				}
+			}
+		case "jellyfin":
+			if _, ok := raw["jellyfin"]; ok {
+				if err := app.Deploy(ctx, gateway, appsCfg.Jellyfin); err != nil {
+					return fmt.Errorf("deploy jellyfin: %w", err)
+				}
+			}
 		}
 	}
 

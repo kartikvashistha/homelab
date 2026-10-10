@@ -8,7 +8,6 @@ import (
 	helmv3 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/helm/v3"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/meta/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 const (
@@ -23,7 +22,7 @@ const (
 )
 
 type KialiArgs struct {
-	Hostnames []string `json:"hostname"`
+	Hostnames []string `json:"hostnames"`
 }
 
 type KialiComponent struct {
@@ -88,11 +87,11 @@ func NewKialiComponent(ctx *pulumi.Context, name string, args *KialiArgs, gatewa
 	}
 
 	_, err = core.NewHTTPRouteComponent(ctx, name+"-http-route", &core.HTTPRouteArgs{
-		Name:      pulumi.String("kiali-ui"),
+		Name:      "kiali-ui",
 		Namespace: gateway.Namespace,
-		Hostnames: pulumi.ToStringArray(args.Hostnames),
+		Hostnames: args.Hostnames,
 		Gateway:   gateway,
-		Service:   pulumi.String(KIALI_SERVICE),
+		Service:   KIALI_SERVICE,
 		Port:      KIALI_SERVICE_PORT,
 	},
 		pulumi.Parent(comp),
@@ -114,20 +113,20 @@ func (KialiApp) Name() string {
 	return "kiali"
 }
 
-func (KialiApp) Deploy(ctx *pulumi.Context, cfg *config.Config, gateway *core.GatewayComponent) error {
-	var args KialiArgs
-
-	if err := cfg.GetObject("apps:kiali", &args); err != nil {
-		return fmt.Errorf(
-			"invalid kiali config: %w",
-			err,
-		)
+func (KialiApp) Deploy(ctx *pulumi.Context, gateway *core.GatewayComponent, args any) error {
+	appCfg, ok := args.(KialiArgs)
+	if !ok {
+		return fmt.Errorf("invalid config for kiali")
 	}
 
-	if len(args.Hostnames) == 0 {
-		return fmt.Errorf("kiali hostname must not be empty: %w ", args)
+	if len(appCfg.Hostnames) == 0 {
+		return fmt.Errorf("kiali hostname is required")
 	}
 
-	_, err := NewKialiComponent(ctx, "kiali", &args, gateway)
-	return err
+	_, err := NewKialiComponent(ctx, "kiali", &appCfg, gateway)
+	if err != nil {
+		return fmt.Errorf("create kiali component: %w", err)
+	}
+
+	return nil
 }
