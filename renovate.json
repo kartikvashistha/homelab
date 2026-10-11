@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "description": "Chart/CRD pins annotated with '# renovate: datasource=... depName=...' (Go constants and stack config)",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^pulumi/components/k8s/versions/.+\\.go$/",
+        "/(^|/)Pulumi\\..+\\.yaml$/"
+      ],
+      "matchStrings": [
+        "renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)(?: registryUrl=(?<registryUrl>\\S+))?\\s*\\n\\s*(?:version:|\\w+\\s*=)\\s*\"?(?<currentValue>[^\"\\s]+)\"?"
+      ]
+    }
+  ]
+}

@@ -2,52 +2,17 @@ name: k8s
 description: Bootstrap a kubernetes cluster with various tools and configs
 runtime: go
 
-config:
-  kubernetes:context:
-    value:
-      type: string
-      description: Kubernetes context to use when installing & configuring objects within it
-
-  k8s:networking:
-    value:
-      description: Options to configure various networking components for a cluster
-      values:
-        installGatewayApiCrds:
-          type: boolean
-          description: Option to install gateway api crds
-          default: false
-        metallb:
-          description: Option to configure various metallb settings
-          values:
-            install:
-              type: bool
-              default: false
-            addressPool:
-              type: array
-              description: List of address pools to configure for metallb
-
-  k8s:helm:
-    value:
-      type: array
-      description: List of helm charts to install in a cluster
-      items:
-        releaseName:
-          type: string
-          description: Name of the helm chart to install
-          default: ""
-        chart:
-          type: string
-          description: Name of the helm chart to install
-          default: ""
-        repo:
-          type: string
-          description: Repository URL for the helm chart
-          default: ""
-        version:
-          type: string
-          description: Version of the helm chart to install
-          default: ""
-        namespace:
-          type: string
-          description: Namespace to install the helm chart in
-          default: ""
+# Stack config is structured (objects/lists), which Pulumi.yaml's config schema
+# can't describe. The typed structs in config.go and the component packages
+# (pulumi/components/k8s/core) are the schema; each validates its own section
+# during `pulumi preview`. Keys used per stack:
+#
+#   kubernetes:context   kube context to deploy to (required)
+#   k8s:cluster          clusters/<name>/ directory; defaults to the context
+#   k8s:networking       Gateway API CRDs, MetalLB
+#   k8s:storage          Longhorn
+#   k8s:gateway          cluster gateway (name, className, gatewayIp, domain)
+#   k8s:coredns          homelab DNS (optional)
+#   k8s:helm             list of Helm releases, each with an optional route
+#   k8s:externalServices LAN services fronted by the gateway
+#   k8s:apps             opt-in in-cluster apps (see components/k8s/apps)
