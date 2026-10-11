@@ -8,46 +8,59 @@ config:
       addressPool:
         - 192.168.50.253-192.168.50.254
 
+  k8s:storage:
+    longhorn:
+      install: true
+
+  # Every *.<domain> name resolves to gatewayIp (served by CoreDNS below).
   k8s:gateway:
     name: homelab-internal-gateway
     className: istio
     gatewayIp: 192.168.50.254
+    domain: internal
 
-  k8s:httproute:
-    - name: headlamp-ui
-      namespace: headlamp
-      hostnames:
-        - headlamp.internal
-      service: headlamp
-      port: 80
+  # Clients/DHCP should use loadBalancerIp as their DNS server.
+  k8s:coredns:
+    loadBalancerIp: 192.168.50.253
+    replicas: 2
+    forwardZones:
+      - zone: home.arpa
+        upstreams:
+          - 192.168.50.1
+    upstreams:
+      - 1.1.1.1
 
+  # Per-cluster values overrides: clusters/dreadnought/helm-overrides/<releaseName>/values.yaml
   k8s:helm:
-    - releaseName: homedns
-      chart: coredns
-      namespace: homedns
-      repo: "https://coredns.github.io/helm"
-      version: "1.47.1"
-
     - releaseName: headlamp
       chart: headlamp
       namespace: headlamp
       repo: "https://kubernetes-sigs.github.io/headlamp"
+      # renovate: datasource=helm depName=headlamp registryUrl=https://kubernetes-sigs.github.io/headlamp
       version: 0.45.0
+      route:
+        hostnames:
+          - headlamp.internal
+        port: 80
 
     - releaseName: metrics-server
       chart: metrics-server
       namespace: kube-system
       repo: "https://kubernetes-sigs.github.io/metrics-server"
+      # renovate: datasource=helm depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server
       version: 3.14.0
 
-  k8s:apps:
+  # Services that live outside the cluster but are served through the gateway.
+  k8s:externalServices:
     jellyfin:
-      address:
+      addresses:
         - 192.168.50.89
-      targetPort: 8899
+      port: 8899
       hostnames:
         - jellyfin.internal
 
+  # Opt-in, in-cluster apps (see components/k8s/apps).
+  k8s:apps:
     kiali:
       hostnames:
         - kiali.internal
