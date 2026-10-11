@@ -16,6 +16,7 @@ const (
 	defaultCoreDNSReplicas           = 2
 	defaultCoreDNSUpstream           = "1.1.1.1"
 	metalLBLoadBalancerIPsAnnotation = "metallb.io/loadBalancerIPs"
+	defaultCoreDNSNamespace          = "coredns"
 )
 
 // CoreDNSForwardZone forwards one zone (for example the router's own
@@ -27,7 +28,7 @@ type CoreDNSForwardZone struct {
 
 // CoreDNSConfig is the stack-config shape for `k8s:coredns`.
 type CoreDNSConfig struct {
-	// Namespace defaults to the component name.
+	// Namespace defaults to the coredns.
 	Namespace string `json:"namespace,omitempty"`
 	// Version overrides the pinned chart version in the versions package.
 	Version string `json:"version,omitempty"`
@@ -173,7 +174,7 @@ func NewCoreDNSComponent(
 		Name:            pulumi.String(name),
 		Chart:           pulumi.String("coredns"),
 		Version:         pulumi.String(cmp.Or(args.Version, versions.CoreDNS)),
-		Namespace:       pulumi.String(cmp.Or(args.Namespace, name)),
+		Namespace:       pulumi.String(cmp.Or(args.Namespace, defaultCoreDNSNamespace)),
 		CreateNamespace: pulumi.Bool(true),
 		RepositoryOpts:  &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.CoreDNSRepo)},
 		Values:          values,
