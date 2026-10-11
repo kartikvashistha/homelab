@@ -2,13 +2,15 @@
 
 Pulumi (Go) code for my homelab Kubernetes cluster(s).
 
+They call me (a failed) Victor Frankenstein when I work in this repo.
+
 ## Layout
 
 ```
-go.mod                          single Go module for everything
+go.work                         ties the two modules together locally
 renovate.json                   keeps chart/CRD pins current (see Versions)
 pulumi/
-  components/k8s/
+  components/k8s/               module: .../pulumi/components/k8s
     versions/                   every chart/CRD version pinned in code
     core/
       platform.go               Networking -> CertManager -> Gateway (+ Longhorn)
@@ -18,7 +20,9 @@ pulumi/
       externalservice.go        LAN host fronted by the gateway
       httproute.go              building block
     apps/                       opt-in in-cluster apps, selected via `k8s:apps`
-  projects/k8s/
+  projects/k8s/                 module: .../pulumi/projects/k8s (own go.mod,
+                                  next to Pulumi.yaml, as `pulumi package add`
+                                  expects)
     main.go                     wires config -> components, in order
     config.go                   typed stack-config loading
     cluster.go                  clusters/<cluster>/ layout knowledge
@@ -41,8 +45,30 @@ opt-in.
 ```
 just preview     # pulumi preview --diff
 just up
-just fmt vet lint
+just fmt vet lint tidy    # vet/lint/tidy loop over both modules
 ```
+
+There is no go.mod at the repo root, so run Go tooling from inside a module
+(or via `just`); `go vet ./...` at the root has nothing to match.
+
+## Typed CRDs (provider extensions)
+
+Pulumi can generate typed SDKs for CRDs as an extension of the kubernetes
+provider ([tutorial](https://www.pulumi.com/dev/tutorials/typed-customresources-with-provider-extensions/)).
+Run it from the project directory so the SDK, the `Pulumi.yaml` entry and the
+`go.mod` `replace` all land next to the project:
+
+```
+cd pulumi/projects/k8s
+pulumi package add kubernetes --extension "name=gateway-networking crd-manifest=<path>.yaml"
+```
+
+Heads-up: the components module currently builds untyped `CustomResource`s
+(Gateway, HTTPRoute, MetalLB, cert-manager). A generated SDK lives under the
+*project's* `sdks/` directory, so using it from the components module means
+making that SDK reachable from both modules (e.g. `use` it in `go.work` and
+`replace` it in each `go.mod`), or moving the typed resources into the project.
+Decide that when you adopt the first extension.
 
 ## Recipes
 

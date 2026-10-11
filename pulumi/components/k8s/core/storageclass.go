@@ -36,7 +36,7 @@ func NewStorageClassComponent(ctx *pulumi.Context, name string, args *StorageCla
 	}, pulumi.Parent(comp))
 
 	if err != nil {
-		return nil, fmt.Errorf("Error encountered during the creation of longhorn's namespace: %w", err)
+		return nil, fmt.Errorf("error encountered during the creation of longhorn's namespace: %w", err)
 	}
 
 	_, err = helmv3.NewRelease(ctx, LONGHORN_RELEASE_NAME, &helmv3.ReleaseArgs{
@@ -52,7 +52,7 @@ func NewStorageClassComponent(ctx *pulumi.Context, name string, args *StorageCla
 		pulumi.DependsOn([]pulumi.Resource{longhornNs}))
 
 	if err != nil {
-		return nil, fmt.Errorf("Error encountered during the creation of longhorn's Helm Release: %w", err)
+		return nil, fmt.Errorf("error encountered during the creation of longhorn's Helm Release: %w", err)
 	}
 	return comp, nil
 }
