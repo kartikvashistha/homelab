@@ -24,7 +24,7 @@ config:
   k8s:helm:
     - releaseName: homedns
       chart: coredns
-      namespace: coredns
+      namespace: homedns
       repo: "https://coredns.github.io/helm"
       version: "1.47.1"
 

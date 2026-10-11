@@ -12,12 +12,12 @@ type HTTPRouteComponent struct {
 }
 
 type HTTPRouteArgs struct {
-	Name      string
-	Namespace pulumi.StringInput
-	Hostnames []string
+	Name      string   `json:"name"`
+	Namespace string   `json:"namespace"`
+	Hostnames []string `json:"hostnames"`
 	Gateway   *GatewayComponent
-	Service   string
-	Port      int
+	Service   string `json:"service"`
+	Port      int    `json:"port"`
 }
 
 func NewHTTPRouteComponent(
@@ -28,12 +28,7 @@ func NewHTTPRouteComponent(
 ) (*HTTPRouteComponent, error) {
 	comp := &HTTPRouteComponent{}
 
-	if err := ctx.RegisterComponentResource(
-		"CustomComponent:k8s:HTTPRoute",
-		name,
-		comp,
-		opts...,
-	); err != nil {
+	if err := ctx.RegisterComponentResource("CustomComponent:k8s:HTTPRoute", name, comp, opts...); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +68,7 @@ func NewHTTPRouteComponent(
 			Kind:       pulumi.String("HTTPRoute"),
 			Metadata: &metav1.ObjectMetaArgs{
 				Name:      pulumi.String(args.Name),
-				Namespace: args.Namespace,
+				Namespace: pulumi.String(args.Namespace),
 			},
 			OtherFields: kpulumi.UntypedArgs{
 				"spec": spec,

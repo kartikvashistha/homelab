@@ -70,14 +70,11 @@ func NewJellyfinComponent(
 	// Namespace
 	// ------------------------------------------------------------
 
-	ns, err := corev1.NewNamespace(
-		ctx,
-		name+"-ns",
-		&corev1.NamespaceArgs{
-			Metadata: &metav1.ObjectMetaArgs{
-				Name: pulumi.String(JELLYFIN_NAMESPACE),
-			},
+	ns, err := corev1.NewNamespace(ctx, name+"-ns", &corev1.NamespaceArgs{
+		Metadata: &metav1.ObjectMetaArgs{
+			Name: pulumi.String(JELLYFIN_NAMESPACE),
 		},
+	},
 		childOpts...,
 	)
 	if err != nil {
@@ -91,36 +88,33 @@ func NewJellyfinComponent(
 	// EndpointSlice
 	// ------------------------------------------------------------
 
-	es, err := discoveryv1.NewEndpointSlice(
-		ctx,
-		name+"-endpoint-slice",
-		&discoveryv1.EndpointSliceArgs{
-			Metadata: &metav1.ObjectMetaArgs{
-				Name:      pulumi.String(JELLYFIN_SVC_NAME),
-				Namespace: ns.Metadata.Name(),
-				Labels: pulumi.StringMap{
-					"kubernetes.io/service-name": pulumi.String(JELLYFIN_SVC_NAME),
-				},
-			},
-
-			AddressType: pulumi.String("IPv4"),
-
-			Ports: discoveryv1.EndpointPortArray{
-				discoveryv1.EndpointPortArgs{
-					Name:     HTTP,
-					Protocol: TCP,
-					Port:     pulumi.Int(args.TargetPort),
-				},
-			},
-
-			Endpoints: discoveryv1.EndpointArray{
-				discoveryv1.EndpointArgs{
-					Addresses: pulumi.ToStringArray(
-						args.Address,
-					),
-				},
+	es, err := discoveryv1.NewEndpointSlice(ctx, name+"-endpoint-slice", &discoveryv1.EndpointSliceArgs{
+		Metadata: &metav1.ObjectMetaArgs{
+			Name:      pulumi.String(JELLYFIN_SVC_NAME),
+			Namespace: ns.Metadata.Name(),
+			Labels: pulumi.StringMap{
+				"kubernetes.io/service-name": pulumi.String(JELLYFIN_SVC_NAME),
 			},
 		},
+
+		AddressType: pulumi.String("IPv4"),
+
+		Ports: discoveryv1.EndpointPortArray{
+			discoveryv1.EndpointPortArgs{
+				Name:     HTTP,
+				Protocol: TCP,
+				Port:     pulumi.Int(args.TargetPort),
+			},
+		},
+
+		Endpoints: discoveryv1.EndpointArray{
+			discoveryv1.EndpointArgs{
+				Addresses: pulumi.ToStringArray(
+					args.Address,
+				),
+			},
+		},
+	},
 		childOpts...,
 	)
 	if err != nil {
@@ -134,26 +128,23 @@ func NewJellyfinComponent(
 	// Service
 	// ------------------------------------------------------------
 
-	svc, err := corev1.NewService(
-		ctx,
-		name+"-svc",
-		&corev1.ServiceArgs{
-			Metadata: &metav1.ObjectMetaArgs{
-				Name:      es.Metadata.Name(),
-				Namespace: ns.Metadata.Name(),
-			},
+	_, err = corev1.NewService(ctx, name+"-svc", &corev1.ServiceArgs{
+		Metadata: &metav1.ObjectMetaArgs{
+			Name:      es.Metadata.Name(),
+			Namespace: ns.Metadata.Name(),
+		},
 
-			Spec: &corev1.ServiceSpecArgs{
-				Ports: &corev1.ServicePortArray{
-					corev1.ServicePortArgs{
-						Name:       HTTP,
-						Protocol:   TCP,
-						Port:       pulumi.Int(JELLYFIN_SVC_PORT),
-						TargetPort: pulumi.Int(args.TargetPort),
-					},
+		Spec: &corev1.ServiceSpecArgs{
+			Ports: &corev1.ServicePortArray{
+				corev1.ServicePortArgs{
+					Name:       HTTP,
+					Protocol:   TCP,
+					Port:       pulumi.Int(JELLYFIN_SVC_PORT),
+					TargetPort: pulumi.Int(args.TargetPort),
 				},
 			},
 		},
+	},
 		childOpts...,
 	)
 	if err != nil {
@@ -169,7 +160,7 @@ func NewJellyfinComponent(
 
 	_, err = core.NewHTTPRouteComponent(ctx, name+"-http-route", &core.HTTPRouteArgs{
 		Name:      name + "-route",
-		Namespace: svc.Metadata.Namespace().Elem(),
+		Namespace: JELLYFIN_NAMESPACE,
 		Hostnames: args.Hostnames,
 		Gateway:   gateway,
 		Service:   JELLYFIN_SVC_NAME,

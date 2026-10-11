@@ -88,7 +88,7 @@ func NewKialiComponent(ctx *pulumi.Context, name string, args *KialiArgs, gatewa
 
 	_, err = core.NewHTTPRouteComponent(ctx, name+"-http-route", &core.HTTPRouteArgs{
 		Name:      "kiali-ui",
-		Namespace: gateway.Namespace,
+		Namespace: core.ISTIO_NAMESPACE,
 		Hostnames: args.Hostnames,
 		Gateway:   gateway,
 		Service:   KIALI_SERVICE,
