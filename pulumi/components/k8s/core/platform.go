@@ -62,19 +62,20 @@ func NewPlatform(
 		return nil, fmt.Errorf("cert-manager: %w", err)
 	}
 
-	if args.Storage.Longhorn.Install {
-		p.Storage, err = NewLonghornComponent(ctx, "longhorn", parent)
-		if err != nil {
-			return nil, fmt.Errorf("storage: %w", err)
-		}
-	}
-
 	gateway := args.Gateway // copy: ClusterIssuer is derived, not configured
 	gateway.ClusterIssuer = p.CertManager.ClusterIssuer
 	p.Gateway, err = NewGatewayComponent(ctx, "gateway", &gateway, parent,
 		pulumi.DependsOn([]pulumi.Resource{p.Networking, p.CertManager}))
 	if err != nil {
 		return nil, fmt.Errorf("gateway: %w", err)
+	}
+
+	if args.Storage.Longhorn.Install {
+		args.Storage.Longhorn.Gateway = p.Gateway
+		p.Storage, err = NewLonghornComponent(ctx, "longhorn", args.Storage.Longhorn, parent)
+		if err != nil {
+			return nil, fmt.Errorf("storage: %w", err)
+		}
 	}
 
 	if err := ctx.RegisterResourceOutputs(p, pulumi.Map{}); err != nil {

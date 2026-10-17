@@ -18,7 +18,12 @@ type StorageArgs struct {
 }
 
 type LonghornArgs struct {
+	//Whether to install Longhorn or not
 	Install bool `json:"install"`
+	//hostnames where the longhorn web can be accessible via the gateway api
+	Hostnames []string `json:"hostnames"`
+	//Gateway component for which the route will be created
+	Gateway *GatewayComponent
 }
 
 // LonghornComponent installs Longhorn, which provides the cluster's
@@ -30,6 +35,7 @@ type LonghornComponent struct {
 func NewLonghornComponent(
 	ctx *pulumi.Context,
 	name string,
+	args LonghornArgs,
 	opts ...pulumi.ResourceOption,
 ) (*LonghornComponent, error) {
 	comp := &LonghornComponent{}
@@ -53,6 +59,17 @@ func NewLonghornComponent(
 		RepositoryOpts: &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.LonghornRepo)},
 	}, parentOpt); err != nil {
 		return nil, fmt.Errorf("install longhorn: %w", err)
+	}
+
+	if _, err = NewHTTPRouteComponent(ctx, name+"-route", &HTTPRouteArgs{
+		Name:      "longhorn-ui",
+		Namespace: longhornNamespace,
+		Hostnames: args.Hostnames,
+		Gateway:   args.Gateway,
+		Service:   "longhorn-frontend",
+		Port:      80,
+	}); err != nil {
+		return nil, fmt.Errorf("failed to create storageclass route: %w", err)
 	}
 
 	if err := ctx.RegisterResourceOutputs(comp, pulumi.Map{}); err != nil {

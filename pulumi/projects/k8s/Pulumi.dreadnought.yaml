@@ -11,6 +11,8 @@ config:
   k8s:storage:
     longhorn:
       install: true
+      hostnames:
+        - longhorn.internal
 
   # Every *.<domain> name resolves to gatewayIp (served by CoreDNS below).
   k8s:gateway:
