@@ -60,6 +60,12 @@ config:
       port: 8899
       hostnames:
         - jellyfin.internal
+    router-mgmt-ui:
+      addresses:
+        - 192.168.50.1
+      port: 80
+      hostnames:
+        - router.internal
 
   # Opt-in, in-cluster apps (see components/k8s/apps).
   k8s:apps:
