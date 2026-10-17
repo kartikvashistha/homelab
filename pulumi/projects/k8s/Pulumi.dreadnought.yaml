@@ -54,12 +54,20 @@ config:
 
   # Services that live outside the cluster but are served through the gateway.
   k8s:externalServices:
+    ugnas:
+      addresses:
+        - 192.168.50.89
+      port: 9999
+      hostnames:
+        - ugnas.internal
+
     jellyfin:
       addresses:
         - 192.168.50.89
       port: 8899
       hostnames:
         - jellyfin.internal
+
     router-mgmt-ui:
       addresses:
         - 192.168.50.1
