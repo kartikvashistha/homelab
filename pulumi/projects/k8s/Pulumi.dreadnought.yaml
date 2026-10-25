@@ -2,6 +2,7 @@ config:
   kubernetes:context: dreadnought
 
   k8s:networking:
+    installCilium: true
     installGatewayApiCrds: true
     metallb:
       install: true

@@ -10,6 +10,10 @@
 package versions
 
 const (
+	CiliumRepo = "https://helm.cilium.io"
+	// renovate: datasource=helm depName=cilium registryUrl=https://helm.cilium.io
+	Cilium = "1.20.4"
+
 	// renovate: datasource=github-releases depName=kubernetes-sigs/gateway-api
 	GatewayAPI = "v1.6.0"
 

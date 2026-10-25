@@ -10,6 +10,7 @@ import (
 )
 
 type NetworkComponentArgs struct {
+	InstallCilium         bool        `json:"installCilium"`
 	InstallGatewayApiCrds bool        `json:"installGatewayApiCrds"`
 	Metallb               MetalLBArgs `json:"metallb"`
 }
@@ -29,6 +30,12 @@ func NewNetworkComponent(
 	comp := &NetworkComponent{}
 	if err := ctx.RegisterComponentResource("homelab:k8s:Networking", name, comp, opts...); err != nil {
 		return nil, fmt.Errorf("register networking component: %w", err)
+	}
+
+	if args.InstallCilium {
+		if err := newCilium(ctx, comp); err != nil {
+			return nil, err
+		}
 	}
 
 	if args.InstallGatewayApiCrds {
