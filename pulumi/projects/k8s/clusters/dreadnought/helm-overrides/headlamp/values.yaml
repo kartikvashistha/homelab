@@ -1,2 +1,12 @@
 config:
   enableHelm: true
+
+volumes:
+  - name: internal-ca
+    configMap:
+      name: internal-ca
+volumeMounts:
+  - name: internal-ca
+    mountPath: /etc/ssl/certs/internal-ca.crt
+    subPath: ca.crt
+    readOnly: true

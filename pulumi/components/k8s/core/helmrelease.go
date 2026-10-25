@@ -63,6 +63,10 @@ type HelmReleaseArgs struct {
 	// resolution out of this component means it knows nothing about how the
 	// repo lays out per-cluster overrides.
 	ValueFiles []string
+	// Values are merged on top of ValueFiles. Use them for anything that
+	// can't live in a committed file, such as secrets (OIDC client secrets
+	// etc.) or values derived from other resources.
+	Values pulumi.Map
 	// Gateway is required when Route is set.
 	Gateway *GatewayComponent
 }
@@ -98,7 +102,7 @@ func NewHelmReleaseComponent(
 		valueFiles = append(valueFiles, pulumi.NewFileAsset(f))
 	}
 
-	release, err := helmv3.NewRelease(ctx, name+"-release", &helmv3.ReleaseArgs{
+	releaseArgs := &helmv3.ReleaseArgs{
 		Name:            pulumi.String(args.ReleaseName),
 		Chart:           pulumi.String(args.Chart),
 		Version:         pulumi.String(args.Version),
@@ -106,7 +110,12 @@ func NewHelmReleaseComponent(
 		CreateNamespace: pulumi.Bool(true),
 		RepositoryOpts:  &helmv3.RepositoryOptsArgs{Repo: pulumi.String(args.Repo)},
 		ValueYamlFiles:  valueFiles,
-	}, pulumi.Parent(comp))
+	}
+	if len(args.Values) > 0 {
+		releaseArgs.Values = args.Values
+	}
+
+	release, err := helmv3.NewRelease(ctx, name+"-release", releaseArgs, pulumi.Parent(comp))
 	if err != nil {
 		return nil, fmt.Errorf("install helm release %q: %w", args.ReleaseName, err)
 	}

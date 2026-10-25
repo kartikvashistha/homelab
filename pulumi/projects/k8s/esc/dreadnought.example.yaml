@@ -1,0 +1,27 @@
+# Pulumi ESC environment for the `dreadnought` stack. Create it with:
+#
+#   esc env init homelab/dreadnought esc/dreadnought.example.yaml   # then edit
+#   esc env edit homelab/dreadnought
+#
+# and generate every value with `openssl rand -base64 48 | tr -d '\n'`.
+# (Prefer hex or alphanumerics for the Postgres password: it ends up in a URL.)
+# Never commit real values; this file is a template.
+#
+# `fn::secret` marks a value secret, and anything derived from it stays secret.
+values:
+  sso:
+    secretKey:        { fn::secret: "CHANGEME" } # authentik.secret_key; changing it logs everyone out
+    postgresPassword: { fn::secret: "CHANGEME" } # must match the DB's existing password
+    clients:
+      headlamp: { fn::secret: "CHANGEME" }
+      kiali:    { fn::secret: "CHANGEME" }
+      jellyfin: { fn::secret: "CHANGEME" } # also pasted into Jellyfin's SSO plugin
+
+  # Everything under pulumiConfig becomes stack config, read by
+  # loadSSOSecrets in config.go. One oidc-secret-<slug> per k8s:sso client.
+  pulumiConfig:
+    k8s:authentik-secret-key: ${sso.secretKey}
+    k8s:authentik-pg-password: ${sso.postgresPassword}
+    k8s:oidc-secret-headlamp: ${sso.clients.headlamp}
+    k8s:oidc-secret-kiali: ${sso.clients.kiali}
+    k8s:oidc-secret-jellyfin: ${sso.clients.jellyfin}

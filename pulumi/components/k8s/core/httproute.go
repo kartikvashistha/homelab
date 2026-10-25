@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"sort"
 
 	kpulumi "github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v4/go/kubernetes/apiextensions"
@@ -20,6 +21,10 @@ type HTTPRouteArgs struct {
 	Gateway   *GatewayComponent
 	Service   string
 	Port      int
+	// SetRequestHeaders are set on every request before it reaches the
+	// Service (Gateway API RequestHeaderModifier). Use it for apps that need
+	// a forwarded header the gateway doesn't send, e.g. X-Forwarded-Port.
+	SetRequestHeaders map[string]string
 }
 
 func (a *HTTPRouteArgs) validate() error {
@@ -59,6 +64,46 @@ func NewHTTPRouteComponent(
 		return nil, fmt.Errorf("register http route component: %w", err)
 	}
 
+	rule := pulumi.Map{
+		"matches": pulumi.MapArray{
+			pulumi.Map{
+				"path": pulumi.Map{
+					"type":  pulumi.String("PathPrefix"),
+					"value": pulumi.String("/"),
+				},
+			},
+		},
+		"backendRefs": pulumi.MapArray{
+			pulumi.Map{
+				"name": pulumi.String(args.Service),
+				"port": pulumi.Int(args.Port),
+			},
+		},
+	}
+
+	if len(args.SetRequestHeaders) > 0 {
+		// Sorted so the rendered spec is stable between runs.
+		names := make([]string, 0, len(args.SetRequestHeaders))
+		for n := range args.SetRequestHeaders {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+
+		headers := make(pulumi.MapArray, 0, len(names))
+		for _, n := range names {
+			headers = append(headers, pulumi.Map{
+				"name":  pulumi.String(n),
+				"value": pulumi.String(args.SetRequestHeaders[n]),
+			})
+		}
+		rule["filters"] = pulumi.MapArray{
+			pulumi.Map{
+				"type":                  pulumi.String("RequestHeaderModifier"),
+				"requestHeaderModifier": pulumi.Map{"set": headers},
+			},
+		}
+	}
+
 	spec := pulumi.Map{
 		"parentRefs": pulumi.MapArray{
 			pulumi.Map{
@@ -67,24 +112,7 @@ func NewHTTPRouteComponent(
 			},
 		},
 		"hostnames": pulumi.ToStringArray(args.Hostnames),
-		"rules": pulumi.MapArray{
-			pulumi.Map{
-				"matches": pulumi.MapArray{
-					pulumi.Map{
-						"path": pulumi.Map{
-							"type":  pulumi.String("PathPrefix"),
-							"value": pulumi.String("/"),
-						},
-					},
-				},
-				"backendRefs": pulumi.MapArray{
-					pulumi.Map{
-						"name": pulumi.String(args.Service),
-						"port": pulumi.Int(args.Port),
-					},
-				},
-			},
-		},
+		"rules":     pulumi.MapArray{rule},
 	}
 
 	if _, err := apiextensions.NewCustomResource(ctx, name+"-cr", &apiextensions.CustomResourceArgs{

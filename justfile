@@ -28,4 +28,4 @@ preview:
     cd {{project}} && pulumi preview --stack {{stack}} --diff
 
 up:
-    cd {{project}} && pulumi up --stack {{stack}}
+    cd {{project}} && pulumi up --stack {{stack}} --skip-preview

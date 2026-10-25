@@ -106,6 +106,48 @@ gateway IP. Point your router's DHCP (or clients) at `k8s:coredns.loadBalancerIp
 `registry` in `apps/apps.go`, enable it under `k8s:apps`. Unknown keys under
 `k8s:apps` fail the preview.
 
+## SSO (Authentik)
+
+`k8s:sso.clients` lists the OIDC applications. Each becomes an Authentik OAuth2
+provider + application, declared as a [blueprint](https://docs.goauthentik.io/customize/blueprints/)
+in a ConfigMap. Secrets never appear in it: the blueprint reads them with
+`!Env`, and Pulumi supplies them through a Secret loaded as env vars.
+
+Secrets come from a Pulumi ESC environment (see
+`pulumi/projects/k8s/esc/dreadnought.example.yaml`) that the stack attaches
+with `environment:`. Needed config keys: `k8s:authentik-secret-key`,
+`k8s:authentik-pg-password`, and one `k8s:oidc-secret-<slug>` per client.
+
+**Add an in-cluster app** (e.g. a chart with OIDC support):
+
+1. Add a client to `k8s:sso.clients` and a `oidc-secret-<slug>` in ESC.
+2. For a Helm release, add a case to `ssoHelmValues` in
+   `projects/k8s/sso.go` (the release name must equal the client slug). For an
+   `apps.App`, use `deps.SSO.IssuerURL(slug)` / `deps.SSO.ClientSecret(slug)`.
+
+**Jellyfin (outside the cluster)** has no native OIDC. Pulumi only registers the
+Authentik side. Install the SSO plugin (`9p4/jellyfin-plugin-sso`) and add a
+provider named `authentik` with:
+
+```
+OID Endpoint:  https://sso.internal/application/o/jellyfin/
+Client ID:     jellyfin
+Client Secret: esc env get homelab/dreadnought sso.clients.jellyfin --show-secrets
+```
+
+Things that bite:
+
+- Pods must resolve and trust `sso.internal`. kube-dns doesn't know the
+  homelab zone unless you forward it to `k8s:coredns.loadBalancerIp`, and the
+  gateway cert is signed by the internal CA.
+- Headlamp acts as the logged-in user, so the kube-apiserver needs
+  `--oidc-issuer-url=https://sso.internal/application/o/headlamp/` and
+  `--oidc-client-id=headlamp`, plus RBAC for your Authentik groups.
+- Rotating a client secret changes the Secret only. Restart the Authentik
+  server and worker pods so they pick up the new env var.
+- The Postgres password in ESC must match the one the database was created
+  with; changing it later does not change it inside an existing PVC.
+
 ## Verifying DNS after `just up`
 
 ```

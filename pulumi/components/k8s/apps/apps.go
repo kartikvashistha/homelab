@@ -18,18 +18,25 @@ var registry = []App{
 	KialiApp{},
 }
 
+// Deps is what the platform hands to every app.
+type Deps struct {
+	Gateway *core.GatewayComponent
+	// SSO registers OIDC clients and serves their secrets and issuer URLs.
+	SSO *core.AuthentikComponent
+}
+
 // App is a deployable unit selected by a key under the `k8s:apps` stack config.
 // Each app decodes and validates its own config, so the registry stays generic
 // and apps stay type-safe.
 type App interface {
 	Name() string
-	Deploy(ctx *pulumi.Context, gateway *core.GatewayComponent, raw json.RawMessage) error
+	Deploy(ctx *pulumi.Context, deps Deps, raw json.RawMessage) error
 }
 
 // Deploy deploys every registered app that has an entry under `k8s:apps`.
 // Entries that match no registered app are an error rather than silently
 // ignored, so a typo fails in preview instead of deploying nothing.
-func Deploy(ctx *pulumi.Context, cfg *config.Config, gateway *core.GatewayComponent) error {
+func Deploy(ctx *pulumi.Context, cfg *config.Config, deps Deps) error {
 	var enabled map[string]json.RawMessage
 	if err := cfg.GetObject("apps", &enabled); err != nil {
 		return fmt.Errorf("read apps config: %w", err)
@@ -54,7 +61,7 @@ func Deploy(ctx *pulumi.Context, cfg *config.Config, gateway *core.GatewayCompon
 		if !ok {
 			continue
 		}
-		if err := app.Deploy(ctx, gateway, raw); err != nil {
+		if err := app.Deploy(ctx, deps, raw); err != nil {
 			return fmt.Errorf("deploy %s: %w", app.Name(), err)
 		}
 	}

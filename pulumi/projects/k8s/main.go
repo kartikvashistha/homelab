@@ -56,9 +56,15 @@ func deploy(ctx *pulumi.Context, k8s *config.Config, sc *stackConfig) error {
 			return err
 		}
 
+		values, err := ssoHelmValues(platform.Authentik, h.ReleaseName)
+		if err != nil {
+			return fmt.Errorf("sso values for %s: %w", h.ReleaseName, err)
+		}
+
 		if _, err := core.NewHelmReleaseComponent(ctx, h.ReleaseName, &core.HelmReleaseArgs{
 			HelmReleaseConfig: h,
 			ValueFiles:        valueFiles,
+			Values:            values,
 			Gateway:           platform.Gateway,
 		}, infra); err != nil {
 			return err
@@ -90,7 +96,10 @@ func deploy(ctx *pulumi.Context, k8s *config.Config, sc *stackConfig) error {
 	}
 
 	// 6. Opt-in in-cluster apps.
-	if err := apps.Deploy(ctx, k8s, platform.Gateway); err != nil {
+	if err := apps.Deploy(ctx, k8s, apps.Deps{
+		Gateway: platform.Gateway,
+		SSO:     platform.Authentik,
+	}); err != nil {
 		return fmt.Errorf("apps: %w", err)
 	}
 

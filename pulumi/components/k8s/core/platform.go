@@ -9,6 +9,7 @@ import (
 // PlatformArgs is the cluster platform's configuration, one field per
 // stack-config key (`k8s:networking`, `k8s:storage`, `k8s:gateway`).
 type PlatformArgs struct {
+	Sso        AuthentikArgs        `json:"sso"`
 	Networking NetworkComponentArgs `json:"networking"`
 	Storage    StorageArgs          `json:"storage"`
 	Gateway    GatewayArgs          `json:"gateway"`
@@ -24,10 +25,12 @@ type PlatformArgs struct {
 type Platform struct {
 	pulumi.ResourceState
 
-	Networking  *NetworkComponent
-	CertManager *CertManagerComponent
-	Storage     *LonghornComponent // nil unless storage.longhorn.install
-	Gateway     *GatewayComponent
+	Authentik    *AuthentikComponent
+	Networking   *NetworkComponent
+	CertManager  *CertManagerComponent
+	TrustManager *TrustManagerComponent
+	Storage      *LonghornComponent // nil unless storage.longhorn.install
+	Gateway      *GatewayComponent
 }
 
 func NewPlatform(
@@ -38,6 +41,9 @@ func NewPlatform(
 ) (*Platform, error) {
 	if err := args.Gateway.Validate(); err != nil {
 		return nil, fmt.Errorf("gateway config: %w", err)
+	}
+	if err := args.Sso.Validate(); err != nil {
+		return nil, fmt.Errorf("sso config: %w", err)
 	}
 
 	p := &Platform{}
@@ -62,12 +68,22 @@ func NewPlatform(
 		return nil, fmt.Errorf("cert-manager: %w", err)
 	}
 
+	p.TrustManager, err = NewTrustManagerComponent(ctx, "trust-manager", p.CertManager, parent)
+	if err != nil {
+		return nil, fmt.Errorf("trust-manager: %w", err)
+	}
+
 	gateway := args.Gateway // copy: ClusterIssuer is derived, not configured
 	gateway.ClusterIssuer = p.CertManager.ClusterIssuer
 	p.Gateway, err = NewGatewayComponent(ctx, "gateway", &gateway, parent,
 		pulumi.DependsOn([]pulumi.Resource{p.Networking, p.CertManager}))
 	if err != nil {
 		return nil, fmt.Errorf("gateway: %w", err)
+	}
+
+	p.Authentik, err = NewAuthentikComponent(ctx, "homelab-sso", p.Gateway, &args.Sso, parent)
+	if err != nil {
+		return nil, fmt.Errorf("sso: %w", err)
 	}
 
 	if args.Storage.Longhorn.Install {

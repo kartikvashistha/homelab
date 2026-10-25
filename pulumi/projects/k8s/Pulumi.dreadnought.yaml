@@ -1,26 +1,50 @@
+# Secrets (Authentik's secret key, Postgres password, OIDC client secrets) come
+# from this Pulumi ESC environment as `pulumiConfig`. See
+# esc/dreadnought.example.yaml for the shape. Adjust <org>/<project> to yours.
+environment:
+  - homelab/dreadnought
 config:
   kubernetes:context: dreadnought
-
+  # Authentik. Each client becomes an OAuth2 provider + application, declared
+  # as a blueprint. Its secret is read from k8s:oidc-secret-<slug> (ESC).
+  k8s:sso:
+    hostnames:
+      - sso.internal
+    clients:
+      - slug: headlamp
+        name: Headlamp
+        redirectUris:
+          - https://headlamp.internal/oidc-callback
+        launchUrl: https://headlamp.internal
+      - slug: kiali
+        name: Kiali
+        redirectUris:
+          - https://kiali.internal/kiali
+        launchUrl: https://kiali.internal
+      # Outside the cluster: Authentik side only. Configure the Jellyfin SSO
+      # plugin by hand (see README, "SSO").
+      - slug: jellyfin
+        name: Jellyfin
+        redirectUris:
+          - https://jellyfin.internal/sso/OID/redirect/authentik
+        launchUrl: https://jellyfin.internal
   k8s:networking:
     installGatewayApiCrds: true
     metallb:
       install: true
       addressPool:
         - 192.168.50.253-192.168.50.254
-
   k8s:storage:
     longhorn:
       install: true
       hostnames:
         - longhorn.internal
-
   # Every *.<domain> name resolves to gatewayIp (served by CoreDNS below).
   k8s:gateway:
     name: homelab-internal-gateway
     className: istio
     gatewayIp: 192.168.50.254
     domain: internal
-
   # Clients/DHCP should use loadBalancerIp as their DNS server.
   k8s:coredns:
     loadBalancerIp: 192.168.50.253
@@ -31,7 +55,6 @@ config:
           - 192.168.50.1
     upstreams:
       - 1.1.1.1
-
   # Per-cluster values overrides: clusters/dreadnought/helm-overrides/<releaseName>/values.yaml
   k8s:helm:
     - releaseName: headlamp
@@ -44,14 +67,12 @@ config:
         hostnames:
           - headlamp.internal
         port: 80
-
     - releaseName: metrics-server
       chart: metrics-server
       namespace: kube-system
       repo: "https://kubernetes-sigs.github.io/metrics-server"
       # renovate: datasource=helm depName=metrics-server registryUrl=https://kubernetes-sigs.github.io/metrics-server
       version: 3.14.0
-
   # Services that live outside the cluster but are served through the gateway.
   k8s:externalServices:
     ugnas:
@@ -60,23 +81,25 @@ config:
       port: 9999
       hostnames:
         - ugnas.internal
-
     jellyfin:
       addresses:
         - 192.168.50.89
       port: 8899
       hostnames:
         - jellyfin.internal
-
     router-mgmt-ui:
       addresses:
         - 192.168.50.1
       port: 80
       hostnames:
         - router.internal
-
   # Opt-in, in-cluster apps (see components/k8s/apps).
   k8s:apps:
     kiali:
       hostnames:
         - kiali.internal
+      sso: true
+  k8s:authentik-secret-key:
+    secure: AAABAE+gp0kmWdJAwtGFl7IKK3dG0G0yTKZ4r+lPPjEUd6sZJgANVB31Xm7vwk5RxF5ECqwNegpyUt+NlE2L7SeNe0MGjXmtg/aEHTlLv+8BTNVyMR8YIo7gawgsyBxdssGC7ICUR0RYXdb3w4lYTA==
+  k8s:oidc-secret-kiali:
+    secure: AAABAJfm3yBsnN81w0ZW5Y04TsIEE2+5FtkRrkdyiM3h1ayayZ5WWrxINyywGTkW3Zds88ReW2DXArcspB4iyR9uQr3piG5Z6KQEkdS6qKFGGnyG2z1JNjJLmDWc2zoO
