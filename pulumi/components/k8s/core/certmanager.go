@@ -57,6 +57,7 @@ func NewCertManagerComponent(
 		Name:           pulumi.String("cert-manager"),
 		Chart:          pulumi.String("cert-manager"),
 		Namespace:      ns.Metadata.Name(),
+		Lint:           pulumi.Bool(true),
 		Version:        pulumi.String(versions.CertManager),
 		RepositoryOpts: &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.CertManagerRepo)},
 		Values: pulumi.Map{

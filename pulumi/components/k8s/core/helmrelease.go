@@ -104,6 +104,7 @@ func NewHelmReleaseComponent(
 		Version:         pulumi.String(args.Version),
 		Namespace:       pulumi.String(args.Namespace),
 		CreateNamespace: pulumi.Bool(true),
+		Lint:            pulumi.Bool(true),
 		RepositoryOpts:  &helmv3.RepositoryOptsArgs{Repo: pulumi.String(args.Repo)},
 		ValueYamlFiles:  valueFiles,
 	}, pulumi.Parent(comp))

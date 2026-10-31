@@ -176,6 +176,7 @@ func NewCoreDNSComponent(
 		Version:         pulumi.String(cmp.Or(args.Version, versions.CoreDNS)),
 		Namespace:       pulumi.String(cmp.Or(args.Namespace, defaultCoreDNSNamespace)),
 		CreateNamespace: pulumi.Bool(true),
+		Lint:            pulumi.Bool(true),
 		RepositoryOpts:  &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.CoreDNSRepo)},
 		Values:          values,
 	}, pulumi.Parent(comp)); err != nil {

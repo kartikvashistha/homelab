@@ -47,6 +47,7 @@ func newMetalLB(ctx *pulumi.Context, args *MetalLBArgs, parent pulumi.Resource) 
 		Name:           pulumi.String("metallb"),
 		Chart:          pulumi.String("metallb"),
 		Namespace:      ns.Metadata.Name(),
+		Lint:           pulumi.Bool(true),
 		Version:        pulumi.String(versions.MetalLB),
 		RepositoryOpts: &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.MetalLBRepo)},
 	}, parentOpt)

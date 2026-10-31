@@ -34,6 +34,7 @@ func newIstio(ctx *pulumi.Context, parent pulumi.Resource) error {
 			Name:           pulumi.String(name),
 			Chart:          pulumi.String(chart),
 			Namespace:      ns.Metadata.Name(),
+			Lint:           pulumi.Bool(true),
 			Version:        pulumi.String(versions.Istio),
 			RepositoryOpts: &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.IstioRepo)},
 		}

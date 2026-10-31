@@ -55,6 +55,7 @@ func NewLonghornComponent(
 		Name:           pulumi.String("longhorn"),
 		Chart:          pulumi.String("longhorn"),
 		Namespace:      ns.Metadata.Name(),
+		Lint:           pulumi.Bool(true),
 		Version:        pulumi.String(versions.Longhorn),
 		RepositoryOpts: &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.LonghornRepo)},
 	}, parentOpt); err != nil {

@@ -54,6 +54,7 @@ func NewKialiComponent(
 		Name:           pulumi.String(kialiOperatorRelease),
 		Chart:          pulumi.String("kiali-operator"),
 		Namespace:      operatorNamespace.Metadata.Name(),
+		Lint:           pulumi.Bool(true),
 		Version:        pulumi.String(versions.KialiOperator),
 		RepositoryOpts: &helmv3.RepositoryOptsArgs{Repo: pulumi.String(versions.KialiOperatorRepo)},
 		Values: pulumi.Map{
