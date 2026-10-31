@@ -81,3 +81,17 @@ config:
     kiali:
       hostnames:
         - kiali.internal
+      prometheusUrl: http://mimir-query-frontend.observability.svc:8080/prometheus
+      prometheusHealthCheckUrl: http://mimir-query-frontend.observability.svc:8080/ready
+      grafanaInternalUrl: http://grafana.observability.svc:80
+      grafanaExternalUrl: https://grafana.internal
+
+    # Grafana + Loki + Tempo + Mimir, fed by Alloy. Optional keys and defaults:
+    #   namespace: observability      clusterName: <stack name>
+    #   grafana: {storageSize: 5Gi}
+    #   loki:    {storageSize: 20Gi, retention: 336h}
+    #   tempo:   {storageSize: 10Gi, retention: 168h}
+    #   mimir:   {storageSize: 20Gi, retention: 30d}
+    observability:
+      hostnames:
+        - grafana.internal

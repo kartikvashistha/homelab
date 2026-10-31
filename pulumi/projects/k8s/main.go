@@ -90,7 +90,10 @@ func deploy(ctx *pulumi.Context, k8s *config.Config, sc *stackConfig) error {
 	}
 
 	// 6. Opt-in in-cluster apps.
-	if err := apps.Deploy(ctx, k8s, platform.Gateway); err != nil {
+	if err := apps.Deploy(ctx, k8s, apps.Env{
+		Gateway:        platform.Gateway,
+		HelmValueFiles: cluster.helmValueFiles,
+	}); err != nil {
 		return fmt.Errorf("apps: %w", err)
 	}
 

@@ -1,0 +1,13 @@
+# Base values for grafana-community/tempo (monolithic), rendered by
+# apps/observability.go. Overrides:
+# clusters/<cluster>/helm-overrides/tempo/values.yaml
+#
+# Tempo 3.x in monolithic mode runs every component in one process on a local
+# volume and needs neither Kafka nor an object store.
+
+persistence:
+  enabled: true
+  size: @@STORAGE_SIZE@@
+
+tempo:
+  retention: @@RETENTION@@

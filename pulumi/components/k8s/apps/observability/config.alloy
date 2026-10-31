@@ -1,0 +1,407 @@
+// Cluster collector. Rendered by apps/observability.go: the namespace and
+// cluster name are substituted at deploy time, then the result is inlined into
+// the Alloy chart's values (alloy.yaml).
+//
+// Replaces what kube-prometheus-stack would do: Alloy scrapes (instead of a
+// Prometheus server), understands ServiceMonitor/PodMonitor/PrometheusRule
+// objects (instead of the Prometheus Operator), and ships everything to
+// Mimir / Loki / Tempo.
+
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+// ============================================================ destinations ==
+
+prometheus.remote_write "mimir" {
+  endpoint {
+    url = "http://mimir-distributor.@@NAMESPACE@@.svc:8080/api/v1/push"
+  }
+
+  external_labels = {
+    cluster = "@@CLUSTER@@",
+  }
+}
+
+loki.write "loki" {
+  endpoint {
+    url = "http://loki.@@NAMESPACE@@.svc:3100/loki/api/v1/push"
+  }
+
+  external_labels = {
+    cluster = "@@CLUSTER@@",
+  }
+}
+
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo.@@NAMESPACE@@.svc:4317"
+
+    tls {
+      insecure = true
+    }
+  }
+}
+
+// ================================================================= metrics ==
+
+// Alloy's own health.
+prometheus.exporter.self "alloy" {}
+
+prometheus.scrape "alloy" {
+  targets         = prometheus.exporter.self.alloy.targets
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "30s"
+}
+
+// --- kubelet and cAdvisor, through the API server's node proxy. ---------------
+// Every node target shares one __address__ (the API server), so `instance` must
+// be the node name or node-level series would collide across nodes.
+
+discovery.kubernetes "nodes" {
+  role = "node"
+}
+
+discovery.relabel "kubelet" {
+  targets = discovery.kubernetes.nodes.targets
+
+  rule {
+    target_label = "__address__"
+    replacement  = "kubernetes.default.svc:443"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_node_name"]
+    regex         = "(.+)"
+    target_label  = "__metrics_path__"
+    replacement   = "/api/v1/nodes/$1/proxy/metrics"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_node_name"]
+    target_label  = "instance"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_node_name"]
+    target_label  = "node"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "kubelet"
+  }
+}
+
+discovery.relabel "cadvisor" {
+  targets = discovery.kubernetes.nodes.targets
+
+  rule {
+    target_label = "__address__"
+    replacement  = "kubernetes.default.svc:443"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_node_name"]
+    regex         = "(.+)"
+    target_label  = "__metrics_path__"
+    replacement   = "/api/v1/nodes/$1/proxy/metrics/cadvisor"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_node_name"]
+    target_label  = "instance"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_node_name"]
+    target_label  = "node"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "cadvisor"
+  }
+}
+
+prometheus.scrape "kubelet" {
+  targets         = discovery.relabel.kubelet.output
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scheme          = "https"
+  scrape_interval = "30s"
+
+  authorization {
+    type             = "Bearer"
+    credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  }
+
+  tls_config {
+    ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  }
+}
+
+prometheus.scrape "cadvisor" {
+  targets         = discovery.relabel.cadvisor.output
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scheme          = "https"
+  scrape_interval = "30s"
+
+  authorization {
+    type             = "Bearer"
+    credentials_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+  }
+
+  tls_config {
+    ca_file = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+  }
+}
+
+// --- kube-state-metrics and node-exporter (installed by this component). ------
+
+discovery.kubernetes "exporter_pods" {
+  role = "pod"
+
+  namespaces {
+    names = ["@@NAMESPACE@@"]
+  }
+}
+
+discovery.relabel "kube_state_metrics" {
+  targets = discovery.kubernetes.exporter_pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    regex         = "kube-state-metrics"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_port_number"]
+    regex         = "8080"
+    action        = "keep"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "kube-state-metrics"
+  }
+}
+
+prometheus.scrape "kube_state_metrics" {
+  targets         = discovery.relabel.kube_state_metrics.output
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "30s"
+
+  // KSM reports metrics *about* other pods with their own namespace/pod labels.
+  honor_labels = true
+}
+
+discovery.relabel "node_exporter" {
+  targets = discovery.kubernetes.exporter_pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    regex         = "prometheus-node-exporter"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_port_number"]
+    regex         = "9100"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_node_name"]
+    target_label  = "instance"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "node-exporter"
+  }
+}
+
+prometheus.scrape "node_exporter" {
+  targets         = discovery.relabel.node_exporter.output
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "30s"
+}
+
+// --- Any pod annotated prometheus.io/scrape=true (istiod, ztunnel, ...). ------
+
+discovery.kubernetes "annotated_pods" {
+  role = "pod"
+}
+
+discovery.relabel "annotated_pods" {
+  targets = discovery.kubernetes.annotated_pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_scrape"]
+    regex         = "true"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_annotation_prometheus_io_path"]
+    regex         = "(.+)"
+    target_label  = "__metrics_path__"
+  }
+
+  rule {
+    source_labels = ["__address__", "__meta_kubernetes_pod_annotation_prometheus_io_port"]
+    regex         = "([^:]+)(?::\\d+)?;(\\d+)"
+    replacement   = "$1:$2"
+    target_label  = "__address__"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    regex         = "(.+)"
+    target_label  = "job"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    regex         = "(.+)"
+    target_label  = "job"
+  }
+}
+
+prometheus.scrape "annotated_pods" {
+  targets         = discovery.relabel.annotated_pods.output
+  forward_to      = [prometheus.remote_write.mimir.receiver]
+  scrape_interval = "30s"
+}
+
+// --- Prometheus Operator objects, without the Operator. -----------------------
+// Anything that ships a ServiceMonitor/PodMonitor (the CRDs are installed by
+// this component) is scraped, and PrometheusRule objects are synced into
+// Mimir's ruler.
+
+prometheus.operator.servicemonitors "all" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+prometheus.operator.podmonitors "all" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+mimir.rules.kubernetes "all" {
+  address = "http://mimir-ruler.@@NAMESPACE@@.svc:8080"
+}
+
+// ==================================================================== logs ==
+// Tails pod logs through the Kubernetes API (no host mounts). Fine at homelab
+// scale; for a big cluster, switch to a DaemonSet reading /var/log/pods.
+
+discovery.kubernetes "pods" {
+  role = "pod"
+}
+
+discovery.relabel "pod_logs" {
+  targets = discovery.kubernetes.pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_phase"]
+    regex         = "Pending|Succeeded|Failed|Unknown"
+    action        = "drop"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_node_name"]
+    target_label  = "node"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    regex         = "(.+)"
+    target_label  = "app"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+    regex         = "(.+)"
+    target_label  = "app"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+    separator     = "/"
+    target_label  = "job"
+  }
+}
+
+loki.source.kubernetes "pods" {
+  targets    = discovery.relabel.pod_logs.output
+  forward_to = [loki.write.loki.receiver]
+}
+
+// Kubernetes events (scheduling failures, OOM kills, probe failures, ...).
+loki.source.kubernetes_events "events" {
+  log_format = "logfmt"
+  forward_to = [loki.write.loki.receiver]
+}
+
+// ================================================================ OTLP in ==
+// Apps (and Istio) send OTLP to alloy:4317 / alloy:4318; traces go to Tempo,
+// metrics to Mimir, logs to Loki.
+
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+
+  output {
+    metrics = [otelcol.processor.batch.default.input]
+    logs    = [otelcol.processor.batch.default.input]
+    traces  = [otelcol.processor.batch.default.input]
+  }
+}
+
+otelcol.processor.batch "default" {
+  output {
+    metrics = [otelcol.exporter.prometheus.default.input]
+    logs    = [otelcol.exporter.loki.default.input]
+    traces  = [otelcol.exporter.otlp.tempo.input]
+  }
+}
+
+otelcol.exporter.prometheus "default" {
+  forward_to = [prometheus.remote_write.mimir.receiver]
+}
+
+otelcol.exporter.loki "default" {
+  forward_to = [loki.write.loki.receiver]
+}
