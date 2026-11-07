@@ -20,6 +20,8 @@ pulumi/
       externalservice.go        LAN host fronted by the gateway
       httproute.go              building block
     apps/                       opt-in in-cluster apps, selected via `k8s:apps`
+      observability.go          Grafana, Loki, Tempo, Mimir, Alloy (+ exporters)
+      observability/            embedded base Helm values and the Alloy pipeline
   projects/k8s/                 module: .../pulumi/projects/k8s (own go.mod,
                                   next to Pulumi.yaml, as `pulumi package add`
                                   expects)
@@ -105,6 +107,36 @@ gateway IP. Point your router's DHCP (or clients) at `k8s:coredns.loadBalancerIp
 **Add an in-cluster app** — implement `apps.App` in a new file, add it to
 `registry` in `apps/apps.go`, enable it under `k8s:apps`. Unknown keys under
 `k8s:apps` fail the preview.
+
+## Observability
+
+Enable with `k8s:apps.observability.hostnames` (see `Pulumi.dreadnought.yaml`).
+Everything lands in one namespace (`observability`); only Grafana is routed
+through the gateway, the rest is ClusterIP.
+
+| Piece | Chart | Shape |
+| --- | --- | --- |
+| Grafana | `grafana-community/grafana` | 1 pod, PVC, datasources pre-wired and cross-linked |
+| Loki | `grafana-community/loki` | monolithic, local PVC, no object store |
+| Tempo | `grafana-community/tempo` | monolithic (Tempo 3.x, no Kafka), local PVC |
+| Mimir | `grafana/mimir-distributed` | classic (non-Kafka) mode, 1 replica each, bundled MinIO for blocks |
+| Alloy | `grafana/alloy` | one instance: scrapes, tails logs, OTLP in, syncs ServiceMonitors/PrometheusRules |
+| kube-state-metrics, node-exporter | `prometheus-community/*` | exporters Alloy doesn't embed |
+| Prometheus Operator CRDs | `prometheus-operator-crds` | CRDs only, **no operator** |
+
+**No Prometheus Operator, no kube-prometheus-stack.** Alloy does the scraping and
+reads ServiceMonitor/PodMonitor/PrometheusRule objects itself; Mimir stores the
+data. What you give up is kube-prometheus-stack's bundled kubernetes-mixin
+recording rules, alerts and dashboards (import dashboards in Grafana by id, e.g.
+1860 node-exporter, 15757-15760 kubernetes views).
+
+Send telemetry to `alloy.observability.svc:4317` (OTLP gRPC) / `:4318` (HTTP).
+Grafana admin password:
+`kubectl -n observability get secret grafana -o jsonpath='{.data.admin-password}' | base64 -d`.
+
+Tune any release without code: `clusters/<cluster>/helm-overrides/<release>/values.yaml`
+with release in `grafana loki tempo mimir alloy kube-state-metrics
+prometheus-node-exporter prometheus-operator-crds`. Applied after the base values.
 
 ## Verifying DNS after `just up`
 

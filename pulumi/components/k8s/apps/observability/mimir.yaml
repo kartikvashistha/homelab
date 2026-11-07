@@ -1,0 +1,82 @@
+# Base values for grafana/mimir-distributed, rendered by apps/observability.go.
+# Overrides: clusters/<cluster>/helm-overrides/mimir/values.yaml
+#
+# Mimir has no single-binary chart, so this is the distributed chart squeezed
+# to one replica of everything: no zone awareness, no caches, no alertmanager.
+# That is NOT highly available; it is the smallest layout that works.
+
+# Chart 6.x defaults to the Kafka-backed "ingest storage" architecture. Use the
+# classic write path instead (the documented opt-out), which needs no Kafka.
+kafka:
+  enabled: false
+
+rollout_operator:
+  enabled: false
+
+mimir:
+  structuredConfig:
+    # Single tenant: writers and Grafana need no X-Scope-OrgID header.
+    multitenancy_enabled: false
+    ingest_storage:
+      enabled: false
+    ingester:
+      push_grpc_method_enabled: true
+      ring:
+        replication_factor: 1
+    store_gateway:
+      sharding_ring:
+        replication_factor: 1
+    limits:
+      compactor_blocks_retention_period: @@RETENTION@@
+
+ingester:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+  persistentVolume:
+    size: 5Gi
+
+store_gateway:
+  replicas: 1
+  zoneAwareReplication:
+    enabled: false
+
+distributor:
+  replicas: 1
+querier:
+  replicas: 1
+query_frontend:
+  replicas: 1
+query_scheduler:
+  replicas: 1
+compactor:
+  replicas: 1
+ruler:
+  replicas: 1
+
+alertmanager:
+  enabled: false
+overrides_exporter:
+  enabled: false
+gateway:
+  enabledNonEnterprise: false
+
+chunks-cache:
+  enabled: false
+index-cache:
+  enabled: false
+metadata-cache:
+  enabled: false
+results-cache:
+  enabled: false
+
+# Object storage for blocks. The chart's bundled MinIO is the zero-setup option,
+# but its image is frozen (MinIO stopped publishing images), so treat it as a
+# stopgap. To use your own S3-compatible store, set `minio.enabled: false` and
+# `mimir.structuredConfig.{common,blocks_storage,ruler_storage}.s3` in
+# clusters/<cluster>/helm-overrides/mimir/values.yaml.
+minio:
+  enabled: true
+  mode: standalone
+  persistence:
+    size: @@STORAGE_SIZE@@

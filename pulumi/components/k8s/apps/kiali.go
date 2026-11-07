@@ -22,6 +22,21 @@ const (
 
 type KialiArgs struct {
 	Hostnames []string `json:"hostnames"`
+	// PrometheusURL is a Prometheus-compatible query endpoint for Istio
+	// metrics, e.g. Mimir's http://mimir-query-frontend.observability.svc:8080/prometheus.
+	// Empty keeps Kiali's default (http://prometheus.istio-system:9090).
+	PrometheusURL string `json:"prometheusUrl,omitempty"`
+	// PrometheusHealthCheckURL overrides the URL Kiali probes to decide
+	// Prometheus is up. Needed for Mimir, which has no <url>/-/healthy and
+	// answers 404; use its /ready. Empty keeps Kiali's default.
+	PrometheusHealthCheckURL string `json:"prometheusHealthCheckUrl,omitempty"`
+	// GrafanaInternalURL is how Kiali reaches Grafana from inside the cluster,
+	// e.g. http://grafana.observability.svc:80. Empty leaves Kiali's Grafana
+	// integration at its default (an unreachable grafana.istio-system:3000).
+	GrafanaInternalURL string `json:"grafanaInternalUrl,omitempty"`
+	// GrafanaExternalURL is the address browsers use for the links Kiali shows,
+	// e.g. https://grafana.internal. Only used with GrafanaInternalURL.
+	GrafanaExternalURL string `json:"grafanaExternalUrl,omitempty"`
 }
 
 type KialiComponent struct {
@@ -42,7 +57,32 @@ func NewKialiComponent(
 		return nil, fmt.Errorf("register kiali component: %w", err)
 	}
 	parentOpt := pulumi.Parent(comp)
-
+	crSpec := pulumi.Map{
+		// Anonymous access: acceptable behind the internal gateway
+		// only. Revisit before exposing outside the LAN.
+		"auth": pulumi.Map{"strategy": pulumi.String("anonymous")},
+	}
+	externalServices := pulumi.Map{}
+	if args.PrometheusURL != "" {
+		prom := pulumi.Map{"url": pulumi.String(args.PrometheusURL)}
+		if args.PrometheusHealthCheckURL != "" {
+			prom["health_check_url"] = pulumi.String(args.PrometheusHealthCheckURL)
+		}
+		externalServices["prometheus"] = prom
+	}
+	if args.GrafanaInternalURL != "" {
+		grafana := pulumi.Map{
+			"enabled":      pulumi.Bool(true),
+			"internal_url": pulumi.String(args.GrafanaInternalURL),
+		}
+		if args.GrafanaExternalURL != "" {
+			grafana["external_url"] = pulumi.String(args.GrafanaExternalURL)
+		}
+		externalServices["grafana"] = grafana
+	}
+	if len(externalServices) > 0 {
+		crSpec["external_services"] = externalServices
+	}
 	operatorNamespace, err := corev1.NewNamespace(ctx, name+"-operator-ns", &corev1.NamespaceArgs{
 		Metadata: &metav1.ObjectMetaArgs{Name: pulumi.String(kialiOperatorNamespace)},
 	}, parentOpt)
@@ -61,11 +101,7 @@ func NewKialiComponent(
 			"cr": pulumi.Map{
 				"create":    pulumi.Bool(true),
 				"namespace": gateway.Namespace,
-				"spec": pulumi.Map{
-					// Anonymous access: acceptable behind the internal gateway
-					// only. Revisit before exposing outside the LAN.
-					"auth": pulumi.Map{"strategy": pulumi.String("anonymous")},
-				},
+				"spec":      crSpec,
 			},
 		},
 	}, parentOpt)
@@ -94,7 +130,7 @@ type KialiApp struct{}
 
 func (KialiApp) Name() string { return "kiali" }
 
-func (KialiApp) Deploy(ctx *pulumi.Context, gateway *core.GatewayComponent, raw json.RawMessage) error {
+func (KialiApp) Deploy(ctx *pulumi.Context, env Env, raw json.RawMessage) error {
 	args, err := decode[KialiArgs](raw)
 	if err != nil {
 		return fmt.Errorf("decode kiali config: %w", err)
@@ -104,7 +140,7 @@ func (KialiApp) Deploy(ctx *pulumi.Context, gateway *core.GatewayComponent, raw 
 		return fmt.Errorf("kiali requires at least one hostname")
 	}
 
-	if _, err := NewKialiComponent(ctx, "kiali", &args, gateway); err != nil {
+	if _, err := NewKialiComponent(ctx, "kiali", &args, env.Gateway); err != nil {
 		return fmt.Errorf("create kiali component: %w", err)
 	}
 

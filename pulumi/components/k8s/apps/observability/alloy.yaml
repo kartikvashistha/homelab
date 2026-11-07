@@ -1,0 +1,32 @@
+# Base values for grafana/alloy, rendered by apps/observability.go.
+# Overrides: clusters/<cluster>/helm-overrides/alloy/values.yaml
+#
+# One Alloy instance does everything (metrics, logs, events, OTLP). That is
+# plenty for a homelab and keeps a single config to read. config.alloy is
+# inlined below.
+
+controller:
+  type: deployment
+  replicas: 1
+
+alloy:
+  configMap:
+    create: true
+    content: |
+@@ALLOY_CONFIG@@
+  # OTLP receiver: point apps at alloy.<namespace>.svc:4317 (gRPC) or :4318.
+  extraPorts:
+    - name: otlp-grpc
+      port: 4317
+      targetPort: 4317
+      protocol: TCP
+    - name: otlp-http
+      port: 4318
+      targetPort: 4318
+      protocol: TCP
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi

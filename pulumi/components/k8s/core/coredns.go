@@ -146,13 +146,13 @@ func NewCoreDNSComponent(
 			},
 		},
 		// Allow scheduling on control-plane nodes (single/small clusters).
-		"tolerations": pulumi.Array{
-			pulumi.Map{
-				"key":      pulumi.String("node-role.kubernetes.io/control-plane"),
-				"operator": pulumi.String("Exists"),
-				"effect":   pulumi.String("NoSchedule"),
-			},
-		},
+		// "tolerations": pulumi.Array{
+		// 	pulumi.Map{
+		// 		"key":      pulumi.String("node-role.kubernetes.io/control-plane"),
+		// 		"operator": pulumi.String("Exists"),
+		// 		"effect":   pulumi.String("NoSchedule"),
+		// 	},
+		// },
 		"prometheus": pulumi.Map{
 			"service": pulumi.Map{
 				"enabled": pulumi.Bool(true),
