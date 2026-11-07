@@ -35,7 +35,8 @@ spec:
   selector:
     app: whoami
   ports:
-    - port: 80
+    - name: http-web
+      port: 80
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
@@ -44,7 +45,7 @@ metadata:
   namespace: whoami
 spec:
   parentRefs:
-    - name: istio-gateway
+    - name: homelab-internal-gateway
       namespace: istio-system
   hostnames: ["homelab.internal"]
   rules:
