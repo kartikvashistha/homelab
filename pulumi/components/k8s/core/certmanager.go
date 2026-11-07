@@ -117,9 +117,7 @@ func newSelfSignedCA(
 				"isCA":       pulumi.Bool(true),
 				"commonName": pulumi.String("internal-root-selfsigned-ca"),
 				"secretName": pulumi.String(rootCASecret),
-				// 10 years. The default is 90 days, which for a root CA you
-				// import into devices means re-trusting it every quarter.
-				"duration": pulumi.String("87600h"),
+				"duration":   pulumi.String("8760h"), // 1 year
 				"privateKey": pulumi.Map{
 					"algorithm": pulumi.String("ECDSA"),
 					"size":      pulumi.Int(256),
